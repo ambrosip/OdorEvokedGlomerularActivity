@@ -33,7 +33,6 @@ From others
     > ScanImageTiffReader
 
 TO DO:
-    iterate through multiple olfactometer files
     get extra info from log file
     add scale bar to roi img (need to contact scanimage to inquire about roi width and height in um metadata)
 

@@ -13,6 +13,9 @@ DEPENDS on:
     From others > ScanImageTiffReader
 
 TO DO: 
+    double check acq x odor x program relationships in plot
+    check if code still works for passive odor presentations (probably not cuz fml)
+    re-calculate mean_dF
 %}
 
 
