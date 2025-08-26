@@ -1,0 +1,79 @@
+before_script:
+    - git lfs install
+
+pages:
+    stage: deploy
+    script:
+        - mkdir public
+        - cd doc
+        - mkdir build
+        - doxygen
+        - conda run sphinx-build --version
+        - conda run sphinx-build -b html source ../public
+        - cd ..
+    tags:
+        - windows
+        - sphinx
+        - doxygen
+    artifacts:
+        paths:
+            - public
+    only:
+        - master
+
+build_windows:
+    stage: build
+    script:
+        - mkdir build
+        - cd build
+        - cmake -G "Visual Studio 17 2022" -DCMAKE_INSTALL_PREFIX=install ..
+        - cd ..
+        - cmake --build build --config Release --target INSTALL
+        - cd build
+        - cpack -C Release -G ZIP -B $env:CI_PROJECT_DIR
+    artifacts:
+        paths:
+            - ./*.zip
+    tags:
+        - cmake
+        - windows
+        
+build_osx:
+    stage: build
+    when: manual
+    script:
+        - mkdir build
+        - cd build
+        - cmake -DCMAKE_INSTALL_PREFIX=install ..
+        - cd ..
+        - cmake --build build --config Release --target install
+        - cd build
+        - ctest -C Release        
+        - mkdir artifacts
+        - cpack -C Release -G ZIP -B `pwd`/..
+    artifacts:
+        paths:
+            - ./*.zip
+    tags:
+        - cmake
+        - osx
+
+build_nix:
+    stage: build
+    when: manual
+    script:
+        - mkdir build
+        - cd build
+        - cmake -DCMAKE_INSTALL_PREFIX=install ..
+        - cd ..
+        - cmake --build build --config Release --target install
+        - cd build
+        - ctest -C Release        
+        - mkdir artifacts
+        - cpack -C Release -G ZIP -B `pwd`/..
+    artifacts:
+        paths:
+            - ./*.zip
+    tags:
+        - cmake
+        - nix

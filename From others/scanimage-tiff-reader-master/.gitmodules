@@ -1,0 +1,9 @@
+[submodule "doc/breathe"]
+	path = doc/breathe
+	url = https://github.com/michaeljones/breathe.git
+[submodule "doc/source/_themes/sphinx_rtd_theme"]
+	path = doc/source/_themes/sphinx_rtd_theme
+	url = https://github.com/snide/sphinx_rtd_theme.git
+[submodule "data"]
+	path = data
+	url = git@gitlab.com:scanimage/tiff-metadata-extractor-test-data.git

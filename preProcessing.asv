@@ -1,0 +1,576 @@
+%{ 
+DOCUMENTATION
+
+protocol:
+save .xlsx log upstream of expDir
+save .h5 into expDir
+save .tif raw imgs into expDir/raw
+save .zip file with ROIs into expDir/processed/fiji
+save .tif avg intensity projection into expDir/processed/fiji
+save .jpg avg intensity projection with flattened ROIs into expDir/processed/fiji
+save .tif mcor imgs into expDir/processed/mcor
+update user input (most important: expDir) and run this script
+
+this script assumes the following folder structure:
+expDir: date (YYYYMMDD) > mouse (sidnumber) > experiment (e1, e2, ..., en) > .h5 file   
+    > olfactometer folder (YYYY_MM_DD_HH_MM_SS) > subfolders with programs > .csv files
+    > raw > .tif files
+    > processed
+        > fiji > .zip, .jpg, and .zip files
+        > mcor > .tif files
+
+outputs:
+expDir/processed/matlab/analysisDate > .mat and .svg files
+
+assumptions and alerts:
+    all figures in folder rawImgDir have the same number of frames and frame rate
+    file names end in "AAAAA_mcor.tif" where A is acquisition number
+    there is one acq file per odor presentation
+    !!search for "assumptions" and "alerts" to find up-to-date info in code
+
+DEPENDS on:
+From others 
+    > ScanImageTiffReader
+
+TO DO:
+    iterate through multiple olfactometer files
+    get extra info from log file
+    add scale bar to roi img (need to contact scanimage to inquire about roi width and height in um metadata)
+
+%}
+
+%% USER INPUT - experiment directory and others
+
+% experiment dir to be analyzed
+expDir = '/Users/priscilla/Documents/Local - Moss Lab/20250624';
+
+% set img-specific inputs
+photobleaching_window_s = 2; % duration of data in senconds that will be removed from baseline to account for photobleaching
+analyzeMcorImgs = 1; % 0 (no) or 1 (yes)
+plotSubset = 0; % 0 (no) or 1 (yes)
+    firstAcq = 1; % ignore if plotSubset == 0; edit if plotSubset == 1
+    lastAcq = 3; % ignore if plotSubset == 0; edit if plotSubset == 1
+
+% label relevant events from olfactometer program that are not
+% automatically found
+trial_start_label = "Output 1";
+
+% label relevant events from h5 file
+% ALERT: ImagingWindow was used as trial_start in some files and as
+% imaging_window in other files!
+trial_start_label_h5 = '/ImagingWindow';
+odor_dur_h5 = '/OdorDelivery';
+
+% set program type x odor x action x outcome relationships
+olfactory_task = "2afc_fine_coarse_fine";
+    reward_r_lick = array2table([["Lick R", "hit"]; ["Lick L", "false choice"]; ["no lick", "miss"]],'VariableNames',{'action','outcome'});
+    reward_l_lick = array2table([["Lick L", "hit"]; ["Lick R", "false choice"]; ["no lick", "miss"]],'VariableNames',{'action','outcome'});
+    s_outcomes.training.odor_01 = reward_r_lick;
+    s_outcomes.training.odor_02 = reward_l_lick;
+    s_outcomes.fine.odor_17 = reward_r_lick;
+    s_outcomes.fine.odor_18 = reward_l_lick;
+    s_outcomes.coarse.odor_17 = reward_r_lick;
+    s_outcomes.coarse.odor_18 = reward_r_lick;
+    s_outcomes.coarse.odor_19 = reward_l_lick;
+
+% set max time interval (in min) between file acq time and trial onset 
+% trigger to assign acq numbers to specific trials when you accidentally 
+% miss the acq of some trials
+tolerance = 0.1;
+
+% colorblind-safe colors (source:
+% https://www.nature.com/articles/nmeth.1618)
+black_color = [0 0 0]/255;
+orange_color = [230 159 0]/255;
+sky_blue_color = [86 180 233]/255;
+bluish_green_color = [0 158 115]/255;
+yellow_color = [240 228 66]/255;
+blue_color = [0 114 178]/255;
+vermillion_color = [213 94 0]/255;
+reddish_purple_color = [204 121 167]/255;
+
+% odor color-coding
+odor_ids = [1; 2; 17; 18; 19; 20];
+color_ids = [black_color; reddish_purple_color; blue_color; sky_blue_color; vermillion_color; orange_color];
+odor_color = table(odor_ids,color_ids,'VariableNames',{'odorID','colorID'});
+
+disp('loaded inputs')
+
+
+%% Get dir of relevant files
+
+analysisDate =  datestr(datetime('today'),'yyyy-mm-dd');
+
+mcorImgDir = fullfile(expDir,'processed','mcor');
+rawImgDir = fullfile(expDir,'raw');
+
+saveDir = fullfile(expDir,'processed','matlab',analysisDate);
+% check if saveDir exists
+if not(isfolder(saveDir))
+    % create saveDir
+    mkdir(saveDir);
+end
+
+% create one struct per "*Events.csv" file found in any expDir subfolder
+olfactometer_event_files = dir(fullfile(expDir, '**','*Events.csv'));
+
+% % get info from 1st "*Events.csv" found
+% olfactometer_file_name = dir(fullfile(expDir, '**','*Events.csv')).name;
+% olfactometer_file_folder = dir(fullfile(expDir, '**','*Events.csv')).folder;
+% olfactometer_file_dir = fullfile(olfactometer_file_folder, olfactometer_file_name);
+
+h5_file_name = dir(fullfile(expDir, '*.h5')).name;
+h5_file_dir = fullfile(expDir,h5_file_name);
+
+disp('got dirs')
+
+
+%% Get scanimage metadata
+
+% use scanimage metadata to get frame rate and number of frames
+% https://vidriotech.gitlab.io/scanimagetiffreader-matlab/
+% Weird things I had to do to make this shit work: open every .mexmaca64 file in the folder
+% ".../GitHub/PA_ScanImageAnalysis/si-tiff-reader-arm/+ScanImageTiffReader/private"
+% to let Apple know that it is safe to run this code
+
+% get complete file dir and name for first image in rawImgDir
+% ASSUMPTION: all figures in folder rawImgDir have the same number of frames
+% and frame rate
+rawImgFileDirs = dir(fullfile(rawImgDir, '*.tif'));
+rawImgFileNames = {rawImgFileDirs.name}';
+rawImgToAnalyzeFileDir = fullfile(rawImgFileDirs(1).folder, rawImgFileDirs(1).name);
+
+% use ScanImageTiffReader to extract metadata 
+import ScanImageTiffReader.ScanImageTiffReader;
+reader=ScanImageTiffReader(rawImgToAnalyzeFileDir);
+vol=reader.data();
+meta=reader.metadata();
+
+% variables I care about from the metadata and what they look like:
+% SI.hStackManager.framesPerSlice = 360
+% SI.hRoiManager.scanFrameRate = 27.22874089533803
+
+% helpful commands to remember:
+% imshow(vol(:,:,floor(size(vol,3)/2)),[]);
+% disp(meta(1:1000));
+% desc=reader.descriptions();
+
+% extract variables I care about from metadata
+% since the values are stored in a huge cell of characters, I have to do some
+% extra work to get them. First, I need to extract the characters between
+% the string right before the number and the next line. Then, I need to
+% take the value out of its cell format using the curly brackets. Finally,
+% I convert the string into a number
+% ALERT this only works with the raw images, not with the motion corrected
+% ones
+framesPerSlice = extractBetween(meta,"SI.hStackManager.framesPerSlice = ",newline);
+framesPerSlice = str2double(framesPerSlice{1});
+scanFrameRate = extractBetween(meta,"SI.hRoiManager.scanFrameRate = ",newline);
+scanFrameRate = str2double(scanFrameRate{1});
+laserPower = extractBetween(meta,"SI.hBeams.powers = ",newline);
+laserPower = str2num(laserPower{1});
+laserPower920 = laserPower(1);
+laserPower1040 = laserPower(2);
+loopAcqInterval = extractBetween(meta,"SI.loopAcqInterval = ",newline);
+loopAcqInterval = str2num(loopAcqInterval{1});
+
+% store variables in easier to understand names
+frames_per_img = framesPerSlice;
+frame_rate_hz = scanFrameRate;
+time_between_acq_onset_in_s = loopAcqInterval;
+
+disp('got scanimage metadata')
+
+
+%% Get olfactometer data
+
+% pre-allocate: 1 row/program, 1 column
+programFieldNames = strings([size(olfactometer_event_files,1),1]);
+% set variables to 0
+isFirstFine = 0;
+isFirstCoarse = 0;
+acqToAnalyze = 0;
+programsToAnalyze = 0;
+% iterate through olfactometer programs
+for programNum = 1:size(olfactometer_event_files,1)
+    programFieldName = strcat("program_", num2str(programNum));
+    programFieldNames(programNum) = programFieldName;
+    s_olfactometer.(programFieldName).name = olfactometer_event_files(programNum).name;
+    s_olfactometer.(programFieldName).folder = olfactometer_event_files(programNum).folder;
+    s_olfactometer.(programFieldName).date = olfactometer_event_files(programNum).date;
+    s_olfactometer.(programFieldName).dir = fullfile(s_olfactometer.(programFieldName).folder, s_olfactometer.(programFieldName).name);
+    % load csv data and speficy text data as string instead of char
+    s_olfactometer.(programFieldName).file = readtable(s_olfactometer.(programFieldName).dir, TextType="string");
+    s_olfactometer.(programFieldName).shortName = s_olfactometer.(programFieldName).name(end-29:end-4);
+    % find rows inside Events csv with trial starts
+    trial_start_rows = matches(s_olfactometer.(programFieldName).file.Events,trial_start_label);
+    % x axis in minutes
+    x_minutes = table2array(s_olfactometer.(programFieldName).file(:,1))/60/1000;
+    % timestamps for trial-starts
+    s_olfactometer.(programFieldName).startMin_by_trial = x_minutes(trial_start_rows);
+    if olfactory_task == "2afc_fine_coarse_fine"
+        if contains(s_olfactometer.(programFieldName).name, 'fine', 'IgnoreCase', true) && ~contains(s_olfactometer.(programFieldName).name, 'pav', 'IgnoreCase', true)
+            if isFirstFine == 0
+                s_olfactometer.(programFieldName).type = "Fine 1";
+                isFirstFine = 1;
+                programsToAnalyze = programsToAnalyze + 1;
+            else
+                s_olfactometer.(programFieldName).type = "Fine 2";
+                programsToAnalyze = programsToAnalyze + 1;
+            end
+        elseif contains(s_olfactometer.(programFieldName).name, 'coarse', 'IgnoreCase', true) && ~contains(s_olfactometer.(programFieldName).name, 'pav', 'IgnoreCase', true)
+            if isFirstCoarse == 0
+                s_olfactometer.(programFieldName).type = "Coarse 1";
+                isFirstCoarse = 1;
+                programsToAnalyze = programsToAnalyze + 1;
+            else
+                s_olfactometer.(programFieldName).type = "Coarse 2";
+                programsToAnalyze = programsToAnalyze + 1;
+            end
+        else
+            s_olfactometer.(programFieldName).type = "ignore";
+        end
+    else
+        s_olfactometer.(programFieldName).type = "na";
+    end
+    
+    if s_olfactometer.(programFieldName).type ~= "ignore"
+        % get list of unique odors used in the experiment
+        eventTypes = unique(s_olfactometer.(programFieldName).file.Events);
+        pat = "Odor";
+        odorIdx = contains(eventTypes,pat);
+        s_olfactometer.(programFieldName).odorList = eventTypes(odorIdx);
+    
+        % pre-allocate: 1 row/odor, 1 column
+        s_olfactometer.(programFieldName).odorFieldNames = strings([length(s_olfactometer.(programFieldName).odorList),1]);
+        % initiate empty array
+        odor_start_ts_labeled_all = [];
+        % iterate through odors
+        for odorNum = 1:length(s_olfactometer.(programFieldName).odorList) 
+            odorID = extractBetween(s_olfactometer.(programFieldName).odorList(odorNum),"I "," -");
+            odorFieldName = strcat('odor_',odorID);
+            s_olfactometer.(programFieldName).odorFieldNames(odorNum) = odorFieldName;
+            % find rows inside Events csv with odors
+            odor_start_rows = matches(s_olfactometer.(programFieldName).file.Events,s_olfactometer.(programFieldName).odorList(odorNum));
+            % timestamps for odor presentation starts
+            s_olfactometer.(programFieldName).(odorFieldName).startMin_by_odor = x_minutes(odor_start_rows);
+            % save array with timestamp (in min) and odor presented
+            odor_start_ts_labeled = x_minutes(odor_start_rows);
+            odor_start_ts_labeled(:,2) = odorID;
+            odor_start_ts_labeled_all = [odor_start_ts_labeled_all; odor_start_ts_labeled];
+        end
+        % sort array with timestamp (in min) and odor presented in chronological order (ie sort by timestamp)
+        s_olfactometer.(programFieldName).odor_start_ts_labeled = sortrows(odor_start_ts_labeled_all);
+    
+        % iterate through trials
+        trialNum_total = length(s_olfactometer.(programFieldName).startMin_by_trial);
+        if olfactory_task == "2afc_fine_coarse_fine"
+            for trialNum = 1:trialNum_total
+                startMin_this_trial = s_olfactometer.(programFieldName).startMin_by_trial(trialNum);
+                first_event_idx_this_trial = find(x_minutes == startMin_this_trial, 1, 'first');
+                % check if this is the last trial
+                if trialNum == trialNum_total
+                    % it this is the last trial, set startMin_next_trial to end of x_minutes
+                    startMin_next_trial = max(x_minutes);
+                else
+                    % it this is NOT the last trial, set startMin_next_trial appropriatedly
+                    startMin_next_trial = s_olfactometer.(programFieldName).startMin_by_trial(trialNum + 1);
+                end
+                last_event_idx_this_trial = find(x_minutes == startMin_next_trial, 1, 'last');
+                search_subset = s_olfactometer.(programFieldName).file.Events(first_event_idx_this_trial:last_event_idx_this_trial);
+                response_window_start_idx = find(strcmp(search_subset,'Response'));
+                search_subset = s_olfactometer.(programFieldName).file.Events(response_window_start_idx:last_event_idx_this_trial);
+                % label outcomes
+                if ~isempty(find(contains(search_subset,'Reward'),1))
+                    s_olfactometer.(programFieldName).outcome_by_trial(trialNum,1) = "hit";
+                elseif ~isempty(find(contains(search_subset,'Lick'),1))
+                    s_olfactometer.(programFieldName).outcome_by_trial(trialNum,1) = "false choice";
+                else
+                    s_olfactometer.(programFieldName).outcome_by_trial(trialNum,1) = "miss"; 
+                end
+            end
+        else
+            s_olfactometer.(programFieldName).outcome_by_trial = strings(trialNum_total,1);
+            s_olfactometer.(programFieldName).outcome_by_trial(:,:) = "na";
+        end
+    
+        s_olfactometer.(programFieldName).summary_by_trial = table(...
+            s_olfactometer.(programFieldName).odor_start_ts_labeled(:,1),...
+            s_olfactometer.(programFieldName).odor_start_ts_labeled(:,2),...
+            s_olfactometer.(programFieldName).outcome_by_trial,...
+            'VariableNames',{'min','odor','outcome'});    
+
+        acqToAnalyze = acqToAnalyze + length(s_olfactometer.(programFieldName).odor_start_ts_labeled);
+    
+        % % find timestamps for licks and rewards
+        % r_lick_rows = matches(s_program.(programFieldName).file.Events,"Lick R");
+        % l_lick_rows = matches(s_program.(programFieldName).file.Events,"Lick L");
+        % r_reward_rows = matches(s_program.(programFieldName).file.Events,"Reward R");
+        % l_reward_rows = matches(s_program.(programFieldName).file.Events,"Reward L");
+    end
+end
+
+disp('got olfactometer data')
+
+
+%% Get acquisition files
+% main output: struct_acqNum_by_odor and labeled_acqs
+
+% analyze motion corrected (mcor) data or raw data based on user input
+if analyzeMcorImgs == 1
+    % get all tif file names in mcorImgDir
+    imgsToAnalyzeDirs = dir(fullfile(mcorImgDir, '*.tif'));
+    imgsToAnalyzeNames = {imgsToAnalyzeDirs.name}';
+    imgsToAnalyzeFolder = mcorImgDir;
+    imgsToAnalyze_numberOf = length(imgsToAnalyzeNames);
+    fileNameIdxStart = 13;
+    fileNameIdxEnd = 9;
+else
+    % get all tif file names in rawImgFileDirs
+    imgsToAnalyzeDirs = rawImgFileDirs;
+    imgsToAnalyzeNames = rawImgFileNames;
+    imgsToAnalyzeFolder = rawImgDir;
+    imgsToAnalyze_numberOf = length(imgsToAnalyzeNames); 
+    fileNameIdxStart = 8;
+    fileNameIdxEnd = 4;
+end
+
+% get acquisition # from img file name
+% ASSUMPTION: file names end in "AAAAA_mcor.tif" where A is acquisition number
+acq_list = [];
+for file=1:imgsToAnalyze_numberOf
+    img_file_name = cell2mat(imgsToAnalyzeNames(file));
+    acq_list = [acq_list; img_file_name(end-fileNameIdxStart:end-fileNameIdxEnd)];
+    acq_list = string(acq_list);
+end
+
+disp('got acquisition files')
+
+
+%% Get timing of raw imgs acquisition 
+
+rawImgs_numberOf = length(rawImgFileNames);
+inter_file_interval = zeros(rawImgs_numberOf-1,1);
+for fileNum = 1:rawImgs_numberOf-1
+    inter_file_interval(fileNum,1) = seconds(time(between(datetime(rawImgFileDirs(fileNum).date), datetime(rawImgFileDirs(fileNum+1).date))));
+end
+
+file_save_time = zeros(rawImgs_numberOf-1,1);
+for fileNum = 2:rawImgs_numberOf
+    file_save_time(fileNum,1) = minutes(time(between(datetime(rawImgFileDirs(1).date),datetime(rawImgFileDirs(fileNum).date))));
+end
+
+disp('calculated timing of raw imgg acqs')
+
+
+%%
+% 
+% % add 3rd column with acquisition number for sorting img files later
+% % ASSUMPTION: there is one acq file per odor presentation
+% odor_start_ts_labeled_all(:,3) = str2num(acq_list);
+% 
+% % save as table with headers
+% labeled_acqs = array2table(odor_start_ts_labeled_all,'VariableNames',{'min','odor','acq'});
+% 
+% % save structure with acq number per odor
+% for i = 1:length(odorList)
+%     odorNum = extractBetween(odorList(i),"I "," -");
+%     odorFieldName = strcat('odor_',odorNum);
+%     struct_acqNum_by_odor.(odorFieldName) = labeled_acqs.acq(labeled_acqs.odor==str2num(odorNum));
+% end
+% 
+% disp('got acq number data')
+
+
+%% Get trial start and odor presentation timestamps from h5 file
+
+% get relevant data
+total_data_points = h5info(h5_file_dir, trial_start_label_h5).Dataspace.Size;
+samplerate = h5info(h5_file_dir).Attributes.Value;
+trial_start_TTL = h5read(h5_file_dir, trial_start_label_h5);
+odor_TTL = h5read(h5_file_dir, odor_dur_h5);
+
+% get relevant info from file name
+fileName_h5 = h5_file_dir(end-16:end);
+
+% x axis in minutes
+x_data_points_h5 = 1:total_data_points;
+x_minutes_h5 = x_data_points_h5/samplerate/60;
+
+% find onset of TTL pulses
+[trial_pks,trial_locs]=findpeaks(diff(trial_start_TTL),'MinPeakHeight',2);
+[odor_pks,odor_locs]=findpeaks(diff(odor_TTL),'MinPeakHeight',2);
+
+% find offset of odor TTL pulse
+[odor_end_pks,odor_end_locs]=findpeaks(-diff(odor_TTL),'MinPeakHeight',2);
+
+% adjust timing of locs (to account for diff function used to find peaks)
+trial_locs = trial_locs + 1;
+odor_locs = odor_locs + 1;
+odor_end_locs = odor_end_locs + 1;
+
+% convert locs from data points to minutes
+trial_locs = trial_locs/samplerate/60;
+odor_locs = odor_locs/samplerate/60;
+odor_end_locs = odor_end_locs/samplerate/60;
+
+disp('got h5 data')
+
+
+%% Compare # of raw acq to # of trials and adjust trial x acq relationship
+
+% calculate lag between last file save time and last trial onset trigger in minutes
+lag_between_last_fileSave_and_last_trialOnsetTrigger = file_save_time(end) - trial_locs(end);
+adjusted_file_save_time = file_save_time - lag_between_last_fileSave_and_last_trialOnsetTrigger;
+
+% annotate trials with missing acquisitions
+% start with last acq and last trial_loc
+acq_idx = size(acq_list,1);
+trial_locs_idx = size(trial_locs,1);
+if size(trial_locs,1) ~= size(file_save_time,1)
+    for programNum = size(programFieldNames,1):-1:1
+        programFieldName = programFieldNames(programNum);
+        if s_olfactometer.(programFieldName).type ~= "ignore"            
+            trialNum_total = size(s_olfactometer.(programFieldName).summary_by_trial,1);
+            % add a column pre-allocated with NaN where acq # per trial will go
+            s_olfactometer.(programFieldName).summary_by_trial = addvars(s_olfactometer.(programFieldName).summary_by_trial,NaN(trialNum_total,1),'NewVariableName','acqNum');
+            s_olfactometer.(programFieldName).summary_by_trial = addvars(s_olfactometer.(programFieldName).summary_by_trial,NaN(trialNum_total,1),'NewVariableName','acqIdx');
+            for trialNum = trialNum_total:-1:1
+                if abs(trial_locs(trial_locs_idx) - adjusted_file_save_time(acq_idx)) > tolerance
+                % if round(trial_locs(trial_locs_idx),1) ~= round(adjusted_file_save_time(acq_idx),1) % this method failed
+                    disp('oops we have trials without acq')
+                    trial_locs_idx = trial_locs_idx - 1;
+                else
+                    s_olfactometer.(programFieldName).summary_by_trial.acq(trialNum) = str2double(acq_list(acq_idx));
+                    trial_locs_idx = trial_locs_idx - 1;
+                    acq_idx = acq_idx - 1;
+                end
+            end
+        end
+    end
+end
+
+disp('finished matching olfactometer trials to acqs')
+
+
+%% FIG 1 - OLFACTOMETER ODOR PRESENTATIONS RASTER
+
+fig1 = figure('name', strcat(s_olfactometer.program_1.shortName, '_', analysisDate, ' - raster'));
+t=tiledlayout('horizontal');
+for programNum = 1:size(programFieldNames,1)
+    programFieldName = programFieldNames(programNum);
+    if s_olfactometer.(programFieldName).type ~= "ignore"  
+        nexttile
+        plot(s_olfactometer.(programFieldName).startMin_by_trial,1,'|','Color','k','LineWidth',1)
+        hold on;
+        for odorNum = 1:length(s_olfactometer.(programFieldName).odorList)
+            odorID = extractBetween(s_olfactometer.(programFieldName).odorList(odorNum),"I "," -");
+            odorFieldName = s_olfactometer.(programFieldName).odorFieldNames(odorNum);
+            color = odor_color.colorID(odor_color.odorID==str2double(odorID),:);
+            plot(s_olfactometer.(programFieldName).(odorFieldName).startMin_by_odor,odorNum+1,'|','LineWidth',1,'Color',color)
+        end
+        hold off;
+        yMinForRaster = 0;
+        % yMaxForRaster = length(odorList)+2;
+        yMaxForRaster = 5;
+        xMinForRaster = 0;
+        xMaxForRaster = ceil(max(s_olfactometer.(programFieldName).summary_by_trial.min)/5)*5; % round up to nearest multiple of 5
+        axis([xMinForRaster xMaxForRaster yMinForRaster yMaxForRaster])
+        yticks([]);
+        xticks([0,xMaxForRaster]);
+        xlabel('Time (min)');
+        title(s_olfactometer.(programFieldName).type, 'Interpreter','none');
+    end
+end 
+
+set(fig1, 'Position', [0 0 500 250])    % x y width height
+disp('plot fig1 complete')
+
+
+%% FIG 2 - SCOPE H5 Time-series and peaks
+
+fig2 = figure('name', strcat(fileName_h5, '_', analysisDate, ' - scope events'));
+plot(x_minutes_h5,trial_start_TTL, 'Color','k')
+hold on;
+plot(trial_locs,trial_pks,'o','Color','k')
+plot(x_minutes_h5,odor_TTL, 'Color','m')
+% plot(odor_locs,trial_pks,'o','Color','m')
+plot(odor_locs,odor_pks,'o','Color','m')
+plot(odor_end_locs,odor_end_pks,'*','Color','y')
+% show file save times
+xline(file_save_time - lag_between_last_fileSave_and_last_trialOnsetTrigger)
+hold off
+disp('plot fig2 complete')
+
+
+% %% FIG 3 - OLFACTOMETER vs SCOPE H5 raster
+% 
+% % calculate lag between start of scope loop and start of olfactometer
+% % program in minutes
+% lag_between_scope_and_olfactometer = mean(trial_locs - startMin_by_trial);
+% 
+% fig3 = figure('name', strcat(fileName_h5, '_', analysisDate, ' - raster comparison'));
+% % olfactometer
+%     plot(startMin_by_trial,1,'|','Color','k','LineWidth',1)
+%     hold on;
+%     for odorNum = 1:length(odorList)
+%         odorNum = extractBetween(odorList(odorNum),"I "," -");
+%         odorFieldName = strcat('odor_',odorNum);
+%         color = odor_color.colorID(odor_color.odorID==str2num(odorNum),:);
+%         plot(struct_startMin_by_odor.(odorFieldName),odorNum+1,'|','LineWidth',1,'Color',color)
+%     end
+% % scope h5 
+%     xline(trial_locs-lag_between_scope_and_olfactometer,'Color','k')
+%     xline(odor_locs-lag_between_scope_and_olfactometer,'Color','m')
+% hold off;
+% axis([xMinForRaster xMaxForRaster yMinForRaster yMaxForRaster])
+% yticks([]);
+% xticks([0,xMaxForRaster]);
+% xlabel('Time (min)');
+% set(fig3, 'Position', [0 0 1000 100])    % x y width height
+% disp('plot fig3 complete')
+
+
+%% Calculate baseline duration 
+
+% test if you missed the first trial peak, causing the size of odor_locs to
+% be larger than the size of trial_locs
+if size(trial_locs,1) < size(odor_locs,1)
+    % drop off the first odor_locs and the first odor_end_locs
+    odor_locs = odor_locs(2:end);
+    odor_end_locs = odor_end_locs(2:end);
+end
+baseline_dur_s = mean((odor_locs - trial_locs)*60);
+img_dur_s = frames_per_img / frame_rate_hz;
+baseline_dur_frames = baseline_dur_s * frame_rate_hz;
+odor_dur_s = mean((odor_end_locs - odor_locs)*60);
+odor_dur_frames = odor_dur_s * frame_rate_hz;
+odor_onset_s = baseline_dur_s;
+odor_offset_s = odor_onset_s + odor_dur_s;
+disp('calculated baseline')
+
+
+%% Save figs
+
+FigList = findobj(allchild(0), 'flat', 'Type', 'figure');
+
+% save all open figs
+for iFig = 1:length(FigList)
+  FigHandle = FigList(iFig);
+  FigName = FigList(iFig).Name;
+  set(0, 'CurrentFigure', FigHandle);
+  % forces matlab to save fig as a vector
+  FigHandle.Renderer = 'painters';  
+  % actually saves a vector file
+  saveas(FigHandle,fullfile(saveDir, [FigName '.svg']));
+end 
+disp('saved all figs')
+close all
+
+
+%% Save workspace
+
+% save workspace variables
+matFileName = strcat(imgsToAnalyzeNames{1}(1:end-9),'_',imgsToAnalyzeNames{end}(end-13:end-4),'_preProcessing');
+save(fullfile(saveDir,matFileName));     
+disp('saved mat file')

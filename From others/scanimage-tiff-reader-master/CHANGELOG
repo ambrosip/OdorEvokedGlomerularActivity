@@ -1,0 +1,8 @@
+v1.4
+    - added API calss for loading data from a selected interval of frames.
+v1.3
+    - refactored support for other languages to their own repositories
+v1.2 
+    - changed c api to fix a problem with returning error messages to the 
+      caller
+
