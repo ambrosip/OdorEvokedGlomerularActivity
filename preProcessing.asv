@@ -1,43 +1,52 @@
 %{ 
 DOCUMENTATION
+written by PA on Aug/2025
 
-protocol:
-save .xlsx log upstream of expDir
-save .h5 into expDir
-save .tif raw imgs into expDir/raw
-save .zip file with ROIs into expDir/processed/fiji
-save .tif avg intensity projection into expDir/processed/fiji
-save .jpg avg intensity projection with flattened ROIs into expDir/processed/fiji
-save .tif mcor imgs into expDir/processed/mcor
-update user input (most important: expDir) and run this script
+GOAL:
+    collect most metadata and data needed to analyze odor-evoked dynamics
+    most useful output is s_olfactometer.program_x.summary_by_trial where x
+    is the program number (ie program idx from olfactometer)
 
-this script assumes the following folder structure:
-expDir: date (YYYYMMDD) > mouse (sidnumber) > experiment (e1, e2, ..., en) > .h5 file   
-    > olfactometer folder (YYYY_MM_DD_HH_MM_SS) > subfolders with programs > .csv files
-    > raw > .tif files
-    > processed
-        > fiji > .zip, .jpg, and .zip files
-        > mcor > .tif files
+    you need an additional code to establish and analyze regions of
+    interest (ROIs)
 
-outputs:
-expDir/processed/matlab/analysisDate > .mat and .svg files
+PROTOCOL:
+    save .xlsx log upstream of expDir
+    save .h5 into expDir
+    save .tif raw imgs into expDir/raw
+    save .zip file with ROIs into expDir/processed/fiji
+    save .tif avg intensity projection into expDir/processed/fiji
+    save .jpg avg intensity projection with flattened ROIs into expDir/processed/fiji
+    save .tif mcor imgs into expDir/processed/mcor
+    update user input (most important: expDir) and run this script
 
-assumptions and alerts:
+KEY ASSUMPTIONS:
+    this script assumes the following folder structure:
+    expDir: date (YYYYMMDD) > mouse (sidnumber) > experiment (e1, e2, ..., en) > .h5 file   
+        > olfactometer folder (YYYY_MM_DD_HH_MM_SS) > subfolders with programs > .csv files
+        > raw > .tif files
+        > processed
+            > fiji > .zip, .jpg, and .zip files
+            > mcor > .tif files
+
+OUTPUTS:
+    expDir/processed/matlab/analysisDate > .mat and .svg files
+
+MORE ASSUMPTIONS AND ALERTS:
     all figures in folder rawImgDir have the same number of frames and frame rate
     file names end in "AAAAA_mcor.tif" where A is acquisition number
     there is one acq file per odor presentation
-    !!search for "assumptions" and "alerts" to find up-to-date info in code
+    !!search for "assumption" and "alert" to find up-to-date info in code
 
 DEPENDS on:
-From others 
-    > ScanImageTiffReader
+    From others 
+        > ScanImageTiffReader
 
 TO DO:
-    iterate through multiple olfactometer files
     get extra info from log file
     add scale bar to roi img (need to contact scanimage to inquire about roi width and height in um metadata)
-
 %}
+
 
 %% USER INPUT - experiment directory and others
 
@@ -63,15 +72,16 @@ odor_dur_h5 = '/OdorDelivery';
 
 % set program type x odor x action x outcome relationships
 olfactory_task = "2afc_fine_coarse_fine";
-    reward_r_lick = array2table([["Lick R", "hit"]; ["Lick L", "false choice"]; ["no lick", "miss"]],'VariableNames',{'action','outcome'});
-    reward_l_lick = array2table([["Lick L", "hit"]; ["Lick R", "false choice"]; ["no lick", "miss"]],'VariableNames',{'action','outcome'});
-    s_outcomes.training.odor_01 = reward_r_lick;
-    s_outcomes.training.odor_02 = reward_l_lick;
-    s_outcomes.fine.odor_17 = reward_r_lick;
-    s_outcomes.fine.odor_18 = reward_l_lick;
-    s_outcomes.coarse.odor_17 = reward_r_lick;
-    s_outcomes.coarse.odor_18 = reward_r_lick;
-    s_outcomes.coarse.odor_19 = reward_l_lick;
+minLicksToTriggerReward = 3;
+    % reward_r_lick = array2table([["Lick R", "hit"]; ["Lick L", "false choice"]; ["no lick", "miss"]],'VariableNames',{'action','outcome'});
+    % reward_l_lick = array2table([["Lick L", "hit"]; ["Lick R", "false choice"]; ["no lick", "miss"]],'VariableNames',{'action','outcome'});
+    % s_outcomes.training.odor_01 = reward_r_lick;
+    % s_outcomes.training.odor_02 = reward_l_lick;
+    % s_outcomes.fine.odor_17 = reward_r_lick;
+    % s_outcomes.fine.odor_18 = reward_l_lick;
+    % s_outcomes.coarse.odor_17 = reward_r_lick;
+    % s_outcomes.coarse.odor_18 = reward_r_lick;
+    % s_outcomes.coarse.odor_19 = reward_l_lick;
 
 % set max time interval (in min) between file acq time and trial onset 
 % trigger to assign acq numbers to specific trials when you accidentally 
@@ -113,11 +123,6 @@ end
 
 % create one struct per "*Events.csv" file found in any expDir subfolder
 olfactometer_event_files = dir(fullfile(expDir, '**','*Events.csv'));
-
-% % get info from 1st "*Events.csv" found
-% olfactometer_file_name = dir(fullfile(expDir, '**','*Events.csv')).name;
-% olfactometer_file_folder = dir(fullfile(expDir, '**','*Events.csv')).folder;
-% olfactometer_file_dir = fullfile(olfactometer_file_folder, olfactometer_file_name);
 
 h5_file_name = dir(fullfile(expDir, '*.h5')).name;
 h5_file_dir = fullfile(expDir,h5_file_name);
@@ -205,6 +210,7 @@ for programNum = 1:size(olfactometer_event_files,1)
     % find rows inside Events csv with trial starts
     trial_start_rows = matches(s_olfactometer.(programFieldName).file.Events,trial_start_label);
     % x axis in minutes
+    % ALERT: comparing doubles can lead to errors 
     x_minutes = table2array(s_olfactometer.(programFieldName).file(:,1))/60/1000;
     % timestamps for trial-starts
     s_olfactometer.(programFieldName).startMin_by_trial = x_minutes(trial_start_rows);
@@ -265,28 +271,38 @@ for programNum = 1:size(olfactometer_event_files,1)
         % iterate through trials
         trialNum_total = length(s_olfactometer.(programFieldName).startMin_by_trial);
         if olfactory_task == "2afc_fine_coarse_fine"
-            for trialNum = 1:trialNum_total
-                startMin_this_trial = s_olfactometer.(programFieldName).startMin_by_trial(trialNum);
-                first_event_idx_this_trial = find(x_minutes == startMin_this_trial, 1, 'first');
+            response_window_start_idx = find(strcmp(s_olfactometer.(programFieldName).file.Events,'Response'));
+            trial_interval_start_idx = find(strcmp(s_olfactometer.(programFieldName).file.Events,'Trial Interval'));
+            for trialNum = 1:trialNum_total        
+                firstIdx_this_trial = response_window_start_idx(trialNum);
                 % check if this is the last trial
                 if trialNum == trialNum_total
-                    % it this is the last trial, set startMin_next_trial to end of x_minutes
-                    startMin_next_trial = max(x_minutes);
+                    % it this is the last trial, set lastIdx_this_trial to last idx of x_minutes
+                    lastIdx_this_trial = size(x_minutes,1);
                 else
-                    % it this is NOT the last trial, set startMin_next_trial appropriatedly
-                    startMin_next_trial = s_olfactometer.(programFieldName).startMin_by_trial(trialNum + 1);
+                    % it this is NOT the last trial, find the start of the next trial
+                    % then, find the "trial interval" timestamp between the start of this trial and the next
+                    % then, set lastIdx_this_trial to the idx of "trial interval"
+                    lastIdx_this_trial = trial_interval_start_idx(trialNum);
                 end
-                last_event_idx_this_trial = find(x_minutes == startMin_next_trial, 1, 'last');
-                search_subset = s_olfactometer.(programFieldName).file.Events(first_event_idx_this_trial:last_event_idx_this_trial);
-                response_window_start_idx = find(strcmp(search_subset,'Response'));
-                search_subset = s_olfactometer.(programFieldName).file.Events(response_window_start_idx:last_event_idx_this_trial);
-                % label outcomes
+                % set a search subset from "Response" to "Trial Interval"
+                % to find "Reward" and/or "Lick" within search subset to label trial outcomes
+                search_subset = s_olfactometer.(programFieldName).file.Events(firstIdx_this_trial:lastIdx_this_trial);
                 if ~isempty(find(contains(search_subset,'Reward'),1))
-                    s_olfactometer.(programFieldName).outcome_by_trial(trialNum,1) = "hit";
-                elseif ~isempty(find(contains(search_subset,'Lick'),1))
-                    s_olfactometer.(programFieldName).outcome_by_trial(trialNum,1) = "false choice";
+                    % if this trial was rewarded, mouse did the right
+                    % action, and outcome is "hit"
+                    s_olfactometer.(programFieldName).outcome_by_trial(trialNum,1) = "hit";                       
+
+                elseif size(find(contains(search_subset,'Lick')),1) < minLicksToTriggerReward                                       
+                    % if trial is NOT rewarded and mouse licked less than 
+                    % minLicksToTriggerReward times, the outcome is "miss"
+                    s_olfactometer.(programFieldName).outcome_by_trial(trialNum,1) = "miss";                    
+
                 else
-                    s_olfactometer.(programFieldName).outcome_by_trial(trialNum,1) = "miss"; 
+                    % if trial is NOT rewarded, but mouse licked more than minLicksToTriggerReward
+                    % times, the mouse licked the wrong spout at some point, so the outcome
+                    % is "false choice".
+                    s_olfactometer.(programFieldName).outcome_by_trial(trialNum,1) = "false choice";                      
                 end
             end
         else
@@ -314,7 +330,6 @@ disp('got olfactometer data')
 
 
 %% Get acquisition files
-% main output: struct_acqNum_by_odor and labeled_acqs
 
 % analyze motion corrected (mcor) data or raw data based on user input
 if analyzeMcorImgs == 1
@@ -361,25 +376,6 @@ for fileNum = 2:rawImgs_numberOf
 end
 
 disp('calculated timing of raw imgg acqs')
-
-
-%%
-% 
-% % add 3rd column with acquisition number for sorting img files later
-% % ASSUMPTION: there is one acq file per odor presentation
-% odor_start_ts_labeled_all(:,3) = str2num(acq_list);
-% 
-% % save as table with headers
-% labeled_acqs = array2table(odor_start_ts_labeled_all,'VariableNames',{'min','odor','acq'});
-% 
-% % save structure with acq number per odor
-% for i = 1:length(odorList)
-%     odorNum = extractBetween(odorList(i),"I "," -");
-%     odorFieldName = strcat('odor_',odorNum);
-%     struct_acqNum_by_odor.(odorFieldName) = labeled_acqs.acq(labeled_acqs.odor==str2num(odorNum));
-% end
-% 
-% disp('got acq number data')
 
 
 %% Get trial start and odor presentation timestamps from h5 file
@@ -441,7 +437,8 @@ if size(trial_locs,1) ~= size(file_save_time,1)
                     disp('oops we have trials without acq')
                     trial_locs_idx = trial_locs_idx - 1;
                 else
-                    s_olfactometer.(programFieldName).summary_by_trial.acq(trialNum) = str2double(acq_list(acq_idx));
+                    s_olfactometer.(programFieldName).summary_by_trial.acqNum(trialNum) = str2double(acq_list(acq_idx));
+                    s_olfactometer.(programFieldName).summary_by_trial.acqIdx(trialNum) = acq_idx;
                     trial_locs_idx = trial_locs_idx - 1;
                     acq_idx = acq_idx - 1;
                 end
@@ -503,33 +500,45 @@ hold off
 disp('plot fig2 complete')
 
 
-% %% FIG 3 - OLFACTOMETER vs SCOPE H5 raster
-% 
-% % calculate lag between start of scope loop and start of olfactometer
-% % program in minutes
-% lag_between_scope_and_olfactometer = mean(trial_locs - startMin_by_trial);
-% 
-% fig3 = figure('name', strcat(fileName_h5, '_', analysisDate, ' - raster comparison'));
-% % olfactometer
-%     plot(startMin_by_trial,1,'|','Color','k','LineWidth',1)
-%     hold on;
-%     for odorNum = 1:length(odorList)
-%         odorNum = extractBetween(odorList(odorNum),"I "," -");
-%         odorFieldName = strcat('odor_',odorNum);
-%         color = odor_color.colorID(odor_color.odorID==str2num(odorNum),:);
-%         plot(struct_startMin_by_odor.(odorFieldName),odorNum+1,'|','LineWidth',1,'Color',color)
-%     end
-% % scope h5 
-%     xline(trial_locs-lag_between_scope_and_olfactometer,'Color','k')
-%     xline(odor_locs-lag_between_scope_and_olfactometer,'Color','m')
-% hold off;
-% axis([xMinForRaster xMaxForRaster yMinForRaster yMaxForRaster])
-% yticks([]);
-% xticks([0,xMaxForRaster]);
-% xlabel('Time (min)');
-% set(fig3, 'Position', [0 0 1000 100])    % x y width height
-% disp('plot fig3 complete')
+%% FIG 4 - plot task performance
 
+hits_per_block = [];
+misses_per_block = [];
+false_choices_per_block = [];
+trials_per_block = [];
+program_types = "";
+
+if olfactory_task == "2afc_fine_coarse_fine"
+    for programNum = 1:size(programFieldNames,1)
+        programFieldName = programFieldNames(programNum);
+        if s_olfactometer.(programFieldName).type ~= "ignore" 
+            hits_per_block = [hits_per_block; sum(strcmp(s_olfactometer.(programFieldName).outcome_by_trial,"hit"))];
+            misses_per_block = [misses_per_block; sum(strcmp(s_olfactometer.(programFieldName).outcome_by_trial,"miss"))];
+            false_choices_per_block = [false_choices_per_block; sum(strcmp(s_olfactometer.(programFieldName).outcome_by_trial,"false choice"))];
+            trials_per_block = [trials_per_block; size(s_olfactometer.(programFieldName).outcome_by_trial,1)];
+            program_types = strcat(program_types, '_', s_olfactometer.(programFieldName).type);
+        end
+    end
+end
+
+fig4 = figure('name', strcat(s_olfactometer.program_1.shortName, '_', analysisDate, ' - performance'));
+hold on;
+plot(hits_per_block./trials_per_block,'Color',bluish_green_color,'LineWidth',1,'DisplayName','Hits');
+plot(false_choices_per_block./trials_per_block,'Color',vermillion_color,'LineWidth',1,'DisplayName','False choices');
+plot(misses_per_block./trials_per_block,'Color',black_color,'LineWidth',1,'DisplayName','Misses');
+yline(0.5,'--')
+axis([1 programsToAnalyze 0 1])
+yticks([0,1]);
+xticks([0,programsToAnalyze]);
+xlabel('Block');
+ylabel('Events/Trials');
+title([s_olfactometer.program_1.shortName, strcat("analyzed_on_", analysisDate), strip(program_types,'_'), ""], 'Interpreter','none');
+hold off;
+legend('Hits', 'False choices', 'Misses','Location','northwest')
+legend('boxoff')
+set(fig4, 'Position', [100 100 200 300])    % x y width height
+disp('plot fig4 complete')
+        
 
 %% Calculate baseline duration 
 
@@ -574,3 +583,51 @@ close all
 matFileName = strcat(imgsToAnalyzeNames{1}(1:end-9),'_',imgsToAnalyzeNames{end}(end-13:end-4),'_preProcessing');
 save(fullfile(saveDir,matFileName));     
 disp('saved mat file')
+
+
+%% ARCHIVE
+
+% %% FIG 3 - OLFACTOMETER vs SCOPE H5 raster
+% 
+% % calculate lag between start of scope loop and start of olfactometer
+% % program in minutes
+% lag_between_scope_and_olfactometer = mean(trial_locs - startMin_by_trial);
+% 
+% fig3 = figure('name', strcat(fileName_h5, '_', analysisDate, ' - raster comparison'));
+% % olfactometer
+%     plot(startMin_by_trial,1,'|','Color','k','LineWidth',1)
+%     hold on;
+%     for odorNum = 1:length(odorList)
+%         odorNum = extractBetween(odorList(odorNum),"I "," -");
+%         odorFieldName = strcat('odor_',odorNum);
+%         color = odor_color.colorID(odor_color.odorID==str2num(odorNum),:);
+%         plot(struct_startMin_by_odor.(odorFieldName),odorNum+1,'|','LineWidth',1,'Color',color)
+%     end
+% % scope h5 
+%     xline(trial_locs-lag_between_scope_and_olfactometer,'Color','k')
+%     xline(odor_locs-lag_between_scope_and_olfactometer,'Color','m')
+% hold off;
+% axis([xMinForRaster xMaxForRaster yMinForRaster yMaxForRaster])
+% yticks([]);
+% xticks([0,xMaxForRaster]);
+% xlabel('Time (min)');
+% set(fig3, 'Position', [0 0 1000 100])    % x y width height
+% disp('plot fig3 complete')
+
+%
+% 
+% % add 3rd column with acquisition number for sorting img files later
+% % ASSUMPTION: there is one acq file per odor presentation
+% odor_start_ts_labeled_all(:,3) = str2num(acq_list);
+% 
+% % save as table with headers
+% labeled_acqs = array2table(odor_start_ts_labeled_all,'VariableNames',{'min','odor','acq'});
+% 
+% % save structure with acq number per odor
+% for i = 1:length(odorList)
+%     odorNum = extractBetween(odorList(i),"I "," -");
+%     odorFieldName = strcat('odor_',odorNum);
+%     struct_acqNum_by_odor.(odorFieldName) = labeled_acqs.acq(labeled_acqs.odor==str2num(odorNum));
+% end
+% 
+% disp('got acq number data')

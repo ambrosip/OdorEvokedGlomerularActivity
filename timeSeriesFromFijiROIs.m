@@ -1,11 +1,17 @@
 %{ 
 DOCUMENTATION
+written by PA on Aug/2025
 
-!! search for ALERT and ASSUMPTION to read important info
+GOAL:
+    Calculate and show dF/F in each ROI (manually drawn as ellipses in
+    fiji) organized by odor (rows and color) and program type (columns).
 
 IMPORTANT re fiji ROIs:
-Do not create overlapping ROIs because the fiji ROI code I'm using will
-not properly analyze them
+    Do not create overlapping ROIs because the fiji ROI code I'm using will
+    not properly analyze them
+
+ASSUMPTIONS:
+    !! search for ALERT and ASSUMPTION to read important info
 
 DEPENDS on:
     mat file created by preProcessing.m
@@ -13,7 +19,6 @@ DEPENDS on:
     From others > ScanImageTiffReader
 
 TO DO: 
-    double check acq x odor x program relationships in plot
     check if code still works for passive odor presentations (probably not cuz fml)
     re-calculate mean_dF
 %}
@@ -103,7 +108,7 @@ for file = 1:imgsToAnalyze_numberOf
 end
 
 
-%% Calculate dF/F for each ROIs across files
+%% Calculate dF/F for each ROI across files
 
 % set default firstFig and lastFig boundaries in case user does NOT want a
 % custom subset
@@ -145,7 +150,6 @@ disp("calculated dF/F")
 
 %% Calculate mean dF/F for each odor and ROI
 
-
 % for programNum = 1:size(programFieldNames)
 %         programFieldName = programFieldNames(programNum);
 %         if s_olfactometer.(programFieldName).type ~= "ignore"
@@ -168,7 +172,7 @@ disp("calculated dF/F")
 % end
 
 
-%% PLOT data in ROIs 
+%% PLOT data in ROIs organized by odor (rows) and program type (columns)
 
 % get max and min value of dF/F to set y axis limits
 ymax = round(max(structfun(@(x) max(x,[],'all'),s_dF,'UniformOutput',true)), TieBreaker='plusinf');
@@ -286,7 +290,9 @@ save(fullfile(saveDir,matFileName));
 disp('I saved the mat file')
 
 
-%% Calculate z score for each ROI across files
+%% ARCHIVE
+
+% %% Calculate z score for each ROI across files
 
 % % z-score = (dF/F - mean(dF/F) in baseline) / sd(dF/F) in baseline
 % fns = fieldnames(s_dF);
@@ -316,8 +322,6 @@ disp('I saved the mat file')
 % end
 
 
-%% ARCHIVE
-% 
 % for file=firstAcq:lastAcq      
 %     % plot dF/F            
 %     plot(xAxisInSec',s_dF.(fns{file})(:,roi));
@@ -331,6 +335,8 @@ disp('I saved the mat file')
 %     end
 % end
 
+
+% %% code hoarding
 
 % for roi=1:rois_numberOf
 %     figName = strcat(firstAcqName(2:end), '_to_', lastAcqName(2:end), '_roi_', num2str(roi), '_dF');
