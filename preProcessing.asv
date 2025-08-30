@@ -240,6 +240,7 @@ for programNum = 1:size(olfactometer_event_files,1)
         end
     else
         s_olfactometer.(programFieldName).type = "na";
+        programsToAnalyze = programsToAnalyze + 1;
     end
     
     if s_olfactometer.(programFieldName).type ~= "ignore"
@@ -455,20 +456,11 @@ else
         s_olfactometer.(programFieldName).summary_by_trial = addvars(s_olfactometer.(programFieldName).summary_by_trial,NaN(trialNum_total,1),'NewVariableName','acqNum');
         s_olfactometer.(programFieldName).summary_by_trial = addvars(s_olfactometer.(programFieldName).summary_by_trial,NaN(trialNum_total,1),'NewVariableName','acqIdx');
         for trialNum = trialNum_total:-1:1
-            if abs(trial_locs(trial_locs_idx) - adjusted_file_save_time(acq_idx)) > tolerance
-            % if round(trial_locs(trial_locs_idx),1) ~= round(adjusted_file_save_time(acq_idx),1) % this method failed
-                disp('oops we have trials without acq')
-                trial_locs_idx = trial_locs_idx - 1;
-            else
-                s_olfactometer.(programFieldName).summary_by_trial.acqNum(trialNum) = str2double(acq_list(acq_idx));
-                s_olfactometer.(programFieldName).summary_by_trial.acqIdx(trialNum) = acq_idx;
-                trial_locs_idx = trial_locs_idx - 1;
-                acq_idx = acq_idx - 1;
-            end
-        end
+            s_olfactometer.(programFieldName).summary_by_trial.acqNum(trialNum) = str2double(acq_list(acq_idx));
+            s_olfactometer.(programFieldName).summary_by_trial.acqIdx(trialNum) = acq_idx;
+            acq_idx = acq_idx - 1;
         end
     end
-
 end
 
 disp('finished matching olfactometer trials to acqs')

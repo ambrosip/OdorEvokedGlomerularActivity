@@ -240,6 +240,7 @@ for programNum = 1:size(olfactometer_event_files,1)
         end
     else
         s_olfactometer.(programFieldName).type = "na";
+        programsToAnalyze = programsToAnalyze + 1;
     end
     
     if s_olfactometer.(programFieldName).type ~= "ignore"
