@@ -52,7 +52,7 @@ TO DO:
 %% USER INPUT - experiment directory and others
 
 % experiment dir to be analyzed
-expDir = '/Users/priscilla/Documents/Local - Moss Lab/20250624';
+expDir = '/Users/priscilla/Documents/Local - Moss Lab/20250829/e1';
 
 % set img-specific inputs
 photobleaching_window_s = 2; % duration of data in senconds that will be removed from baseline to account for photobleaching
@@ -73,6 +73,7 @@ odor_dur_h5 = '/OdorDelivery';
 
 % set program type x odor x action x outcome relationships
 olfactory_task = "2afc_fine_coarse_fine";
+olfactory_task = "passive_odor_presentations";
 minLicksToTriggerReward = 3;
     % reward_r_lick = array2table([["Lick R", "hit"]; ["Lick L", "false choice"]; ["no lick", "miss"]],'VariableNames',{'action','outcome'});
     % reward_l_lick = array2table([["Lick L", "hit"]; ["Lick R", "false choice"]; ["no lick", "miss"]],'VariableNames',{'action','outcome'});
@@ -446,6 +447,19 @@ if size(trial_locs,1) ~= size(file_save_time,1)
             end
         end
     end
+else
+    for programNum = size(programFieldNames,1):-1:1
+        programFieldName = programFieldNames(programNum);           
+        trialNum_total = size(s_olfactometer.(programFieldName).summary_by_trial,1);
+        % add a column pre-allocated with NaN where acq # per trial will go
+        s_olfactometer.(programFieldName).summary_by_trial = addvars(s_olfactometer.(programFieldName).summary_by_trial,NaN(trialNum_total,1),'NewVariableName','acqNum');
+        s_olfactometer.(programFieldName).summary_by_trial = addvars(s_olfactometer.(programFieldName).summary_by_trial,NaN(trialNum_total,1),'NewVariableName','acqIdx');
+        for trialNum = trialNum_total:-1:1
+            s_olfactometer.(programFieldName).summary_by_trial.acqNum(trialNum) = str2double(acq_list(acq_idx));
+            s_olfactometer.(programFieldName).summary_by_trial.acqIdx(trialNum) = acq_idx;
+            acq_idx = acq_idx - 1;
+        end
+    end
 end
 
 disp('finished matching olfactometer trials to acqs')
@@ -503,13 +517,14 @@ disp('plot fig2 complete')
 
 %% FIG 4 - plot task performance
 
-hits_per_block = [];
-misses_per_block = [];
-false_choices_per_block = [];
-trials_per_block = [];
-program_types = "";
-
 if olfactory_task == "2afc_fine_coarse_fine"
+
+    hits_per_block = [];
+    misses_per_block = [];
+    false_choices_per_block = [];
+    trials_per_block = [];
+    program_types = "";
+
     for programNum = 1:size(programFieldNames,1)
         programFieldName = programFieldNames(programNum);
         if s_olfactometer.(programFieldName).type ~= "ignore" 
@@ -520,25 +535,25 @@ if olfactory_task == "2afc_fine_coarse_fine"
             program_types = strcat(program_types, '_', s_olfactometer.(programFieldName).type);
         end
     end
-end
 
-fig4 = figure('name', strcat(s_olfactometer.program_1.shortName, '_', analysisDate, ' - performance'));
-hold on;
-plot(hits_per_block./trials_per_block,'Color',bluish_green_color,'LineWidth',1,'DisplayName','Hits');
-plot(false_choices_per_block./trials_per_block,'Color',vermillion_color,'LineWidth',1,'DisplayName','False choices');
-plot(misses_per_block./trials_per_block,'Color',black_color,'LineWidth',1,'DisplayName','Misses');
-yline(0.5,'--')
-axis([1 programsToAnalyze 0 1])
-yticks([0,1]);
-xticks([0,programsToAnalyze]);
-xlabel('Block');
-ylabel('Events/Trials');
-title([s_olfactometer.program_1.shortName, strcat("analyzed_on_", analysisDate), strip(program_types,'_'), ""], 'Interpreter','none');
-hold off;
-legend('Hits', 'False choices', 'Misses','Location','northwest')
-legend('boxoff')
-set(fig4, 'Position', [100 100 200 300])    % x y width height
-disp('plot fig4 complete')
+    fig4 = figure('name', strcat(s_olfactometer.program_1.shortName, '_', analysisDate, ' - performance'));
+    hold on;
+    plot(hits_per_block./trials_per_block,'Color',bluish_green_color,'LineWidth',1,'DisplayName','Hits');
+    plot(false_choices_per_block./trials_per_block,'Color',vermillion_color,'LineWidth',1,'DisplayName','False choices');
+    plot(misses_per_block./trials_per_block,'Color',black_color,'LineWidth',1,'DisplayName','Misses');
+    yline(0.5,'--')
+    axis([1 programsToAnalyze 0 1])
+    yticks([0,1]);
+    xticks([0,programsToAnalyze]);
+    xlabel('Block');
+    ylabel('Events/Trials');
+    title([s_olfactometer.program_1.shortName, strcat("analyzed_on_", analysisDate), strip(program_types,'_'), ""], 'Interpreter','none');
+    hold off;
+    legend('Hits', 'False choices', 'Misses','Location','northwest')
+    legend('boxoff')
+    set(fig4, 'Position', [100 100 200 300])    % x y width height
+    disp('plot fig4 complete')
+end
         
 
 %% Calculate baseline duration 
