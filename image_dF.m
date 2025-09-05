@@ -33,7 +33,9 @@ frameBaselineStart = frameOdorOnset - frameOdorDuration;
 
 %% Iterate over Data
 
-nPlots = 0;
+% There is one figure for each combination of program and odor
+% iFigure is the index of the figure currently being computed
+iFigure = 0;
 
 % Iterate through programs
 for program_name = string(fieldnames(s_olfactometer))'
@@ -44,7 +46,7 @@ for program_name = string(fieldnames(s_olfactometer))'
         continue
     end
 
-    % Get program number 
+    % Get program number (number after 'program_')
     programSplit = split(program_name, '_');
     programNumber = str2double(programSplit(2));
         
@@ -53,18 +55,27 @@ for program_name = string(fieldnames(s_olfactometer))'
     
     % Iterating through odors in the program
     for odor = programOdors'
-        % Select and iterate through acqIdx corresponding to the odor
+        % Get table with data only for the current odor
         odorRows = summaryByTrial.odor == odor;
+        odorTable = summaryByTrial(odorRows, :);
 
         % Initialize variables that contain the current average images
         % MATLAB will expand those to matrices of the correct size later
-        baselineAvgImage = 0;
-        signalAvgImage = 0;
+        % ASSUMPTION: There is only one baseline for all outcomes!
+        avgBaseline = 0;
+        avgHit = 0;
+        avgMiss = 0;
+        avgFalse = 0;
 
-        % nImages counts how many images where used in the average
-        nImages = 0;
+        % Initialize counts of how many images where used in the average
+        nBaseline = 0;
+        nHit = 0;
+        nMiss = 0;
+        nFalse = 0;
 
-        for acqIdx = summaryByTrial(odorRows, :).acqIdx'
+        for row = 1:height(odorTable)
+            acqIdx = odorTable{row, 'acqIdx'};
+
             % Skip trials without acquisition
             if isnan(acqIdx)
                 continue
@@ -80,105 +91,165 @@ for program_name = string(fieldnames(s_olfactometer))'
                 continue
             end
 
-            % Since there is a file, we increase the counter
-            nImages = nImages + 1;
+            % Since there is a file, we increase the baseline counter
+            nBaseline = nBaseline + 1;
 
             % Load and computes the mean of the relevant frames      
             % We use a trick to compute the average on the fly:
             % https://stackoverflow.com/a/23493727
-            baselineFrames = single(read_file( ...
+            frames = single(read_file( ...
                 filepath, frameBaselineStart, frameOdorDuration));
-            baselineAvgImage = baselineAvgImage * (nImages-1)/nImages + ...
-                mean(baselineFrames, ndims(baselineFrames)) / nImages;
 
-            signalFrames = single(read_file( ...
-                filepath, frameOdorOnset, frameOdorDuration));
-            signalAvgImage = signalAvgImage * (nImages-1)/nImages + ...
-                mean(signalFrames, ndims(baselineFrames)) / nImages;
+            avgBaseline = ...
+                avgBaseline * (nBaseline-1) / nBaseline + ...
+                mean(frames, ndims(frames)) / nBaseline;
+            
+            % Do the same as above, but for the corresponding outcome
+            % The array 'frames' is the same for all possible outcomes
+            frames = single(read_file( ...
+                        filepath, frameOdorOnset, frameOdorDuration));
+
+            switch odorTable{row, 'outcome'}
+                case "hit"
+                    nHit = nHit + 1;
+                    avgHit = ...
+                        avgHit * (nHit - 1) / nHit + ...
+                        mean(frames, ndims(frames)) / nHit;
+                
+                case "miss"
+                    nMiss = nMiss + 1;
+                    avgMiss = ...
+                        avgMiss * (nMiss - 1) / nMiss + ...
+                        mean(frames, ndims(frames)) / nMiss;
+
+                case "false choice"
+                    nFalse = nFalse + 1;
+                    avgFalse = ...
+                        avgFalse * (nFalse - 1) / nFalse + ...
+                        mean(frames, ndims(frames)) / nFalse;
+            
+            end
         end
 
-        % Don't plot the image if there are no acquisition files
-        if nImages == 0
+        % Don't compute the ratio if there are no acquisition files
+        % If there were no acquisition files nBaseline is zero
+        if nBaseline == 0
             continue
         end
 
-        % Computes Signal to Baseline Ratio
-        signalBaselineRatioImage = ...
-            (signalAvgImage - baselineAvgImage) ./ baselineAvgImage;
+        % Otherwise, there is one more figure to plot
+        iFigure = iFigure + 1;
 
-        % There is one more SBR image to plot
-        nPlots = nPlots + 1;
+        % Add current program and odor to current figure
+        figures(iFigure).program = programNumber;
+        figures(iFigure).odor = odor;
 
-        % Add current program, odor, and SBR image to plots
-        plots(nPlots).program = programNumber;
-        plots(nPlots).odor = odor;
-        plots(nPlots).image = signalBaselineRatioImage;
+        % Computes Signal to Baseline Ratio of all outcomes
+        % If there are no instances of the outcome, make it equal to NaN
+        % This will make the code for the quantiles simpler later
+        if nHit > 0
+            figures(iFigure).hit = (avgHit-avgBaseline) ./ avgBaseline;
+        else
+            figures(iFigure).hit = NaN;
+        end
+
+        if nMiss > 0
+            figures(iFigure).miss = (avgMiss-avgBaseline) ./ avgBaseline;
+        else
+            figures(iFigure).miss = NaN;
+        end
+
+        if nFalse > 0
+            figures(iFigure).false = (avgFalse-avgBaseline) ./ avgBaseline;
+        else
+            figures(iFigure).false = NaN;
+        end
     end
 end
 
-%% Plots Data on SBRPlots
+%% Plot the Figures
 
-programs = sort(unique([plots.program]));
-odors = sort(unique([plots.odor]));
+% Extreme values of the signal-to-baseline ratio can be so high that it
+% is hard to see anything else in the figure. Thus, we use quantiles to
+% exclude the outliers. The specific values (5% and 95%) are arbitrary.
 
-nPrograms = length(programs);
-nOdors = length(odors);
+% The MATLAB function quantile(
 
-% Find the position and quantiles for each image
-for i = 1:length(plots)
-    row = find(programs == plots(i).program, 1);
-    column = find(odors == plots(i).odor, 1);
+% Initiliaze limits
+lowerLimit = NaN;
+upperLimit = NaN;
 
-    plots(i).position = column + nOdors * (row - 1);
+% Compute limits figure by figure. The number lowerLimit will be the
+% smallest of all the 5% quantiles and upperLimit will be the largest of
+% all the 95% quantiles.
 
-    % Extreme values of the signal-to-baseline ratio can be so high that it
-    % is hard to see anything else in the figure. Thus, we use quantiles to
-    % exclude the outliers. The specific values (5% and 95%) are arbitrary.
-    plots(i).lowQuantile = ...
-        double(quantile(plots(i).image(:), 0.05));
-    plots(i).highQuantile = ...
-        double(quantile(plots(i).image(:), 0.95));    
+for i = 1:length(figures)    
+    lowerLimit = min([ ...
+        lowerLimit, ...
+        quantile(figures(i).hit(:), 0.05), ...
+        quantile(figures(i).miss(:), 0.05), ...
+        quantile(figures(i).false(:), 0.05) ...
+    ]);
+
+    upperLimit = max([ ...
+        upperLimit, ...
+        quantile(figures(i).hit(:), 0.95), ...
+        quantile(figures(i).miss(:), 0.95), ...
+        quantile(figures(i).false(:), 0.95) ...
+    ]);   
 end
 
-% Make limits uniform across plots
-lowerLimit = min([plots.lowQuantile]);
-upperLimit = max([plots.highQuantile]);
-plotRange = [lowerLimit upperLimit];
+% Take the limit that is larger in absolute value
+% It also turns it into a double because that is a requirement for plots
+absoluteLimit = double(max(abs(upperLimit), abs(lowerLimit)));
 
-% Make range symmetrical so white means 0
-absoluteLimit = max(abs(plotRange));
+% Make range symmetrical around zero (so white means zero in the plots).
+% The same range will be used for all figures, for easy comparisons.
 plotRange = [-absoluteLimit absoluteLimit];
 
-% Start figure and make it big!
-fig = figure;
-set(fig, 'Position', [200 100 1300 800]);
+for iFigure = 1:length(figures)
+    fig = figure('Name', 'test_figure');
 
-for i = 1:length(plots)
-    subplot(nPrograms, nOdors, plots(i).position);
-    imshow(plots(i).image, plotRange);
+    % 3 possible outcomes in a row
+    tl = tiledlayout("horizontal");
 
-    t = sprintf("Program %d Odor %d", plots(i).program, plots(i).odor);
-    title(t, 'interpreter','latex', 'FontSize', 20)
+    nPlots = 0;
+
+    if ~isnan(figures(iFigure).hit)
+        nexttile
+        imshow(figures(iFigure).hit, plotRange)
+        title('Hits', 'FontSize', 16)
+        nPlots = nPlots + 1;
+    end
+
+    if ~isnan(figures(iFigure).miss)
+        nexttile
+        imshow(figures(iFigure).miss, plotRange)
+        title('Misses', 'FontSize', 16)
+        nPlots = nPlots + 1;
+    end
+
+    if ~isnan(figures(iFigure).false)
+        nexttile
+        imshow(figures(iFigure).false, plotRange)
+        title('False Choices', 'FontSize', 16)
+        nPlots = nPlots + 1;
+    end
+
+    baseSize = 600;
+    fig.Position = [200 100 baseSize * nPlots baseSize + 150];
+
+    % Uses the colormap created at the start
+    cb = colorbar;
+    cb.Layout.Tile = "south";
+
+    colormap(divergingGradient);
+    clim(plotRange);
+    
+    ylabel(cb,'$dF/F$', 'interpreter', 'latex', 'FontSize', 16);
+
+    tl.TileSpacing = "compact";
+    tl.Padding = "compact";
+    
+    drawnow;
 end
-
-% Creating ax here makes sure the colorbar below encopasses all plots and
-% not just the last subplot in the for loop above.
-ax = axes(fig);
-t = 'Average Signal-to-Baseline Ratio Plots';
-title(ax, t, 'interpreter','latex', 'FontSize', 24);
-
-axis off;
-axis tight;
-
-% Uses the colormap create at the start
-colormap(divergingGradient);
-clim(plotRange);
-
-c = colorbar('southoutside');
-ylabel(c,'$dF/F$', 'interpreter','latex', 'FontSize', 20);
-
-drawnow;
-
-%% Save figure
-savePath = 'SignalBaselineRatio.png';
-saveas(fig, savePath);
