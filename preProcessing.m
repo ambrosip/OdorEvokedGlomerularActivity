@@ -54,7 +54,7 @@ TO DO:
 %% USER INPUT - experiment directory and others
 
 % experiment dir to be analyzed
-expDir = '/Users/priscilla/Documents/Local - Moss Lab/20250703/SID200';
+expDir = '/Users/priscilla/Documents/Local - Moss Lab/20250903/e2';
 
 % variables made to deal with problem files
 ignoreLastTrial = 0;
@@ -78,7 +78,7 @@ odor_dur_h5 = '/OdorDelivery';
 
 % set program type x odor x action x outcome relationships
 olfactory_task = "2afc_fine_coarse_fine";
-olfactory_task = "passive_odor_presentations";
+% olfactory_task = "passive_odor_presentations";
 minLicksToTriggerReward = 3;
     % reward_r_lick = array2table([["Lick R", "hit"]; ["Lick L", "false choice"]; ["no lick", "miss"]],'VariableNames',{'action','outcome'});
     % reward_l_lick = array2table([["Lick L", "hit"]; ["Lick R", "false choice"]; ["no lick", "miss"]],'VariableNames',{'action','outcome'});
@@ -472,25 +472,27 @@ if size(trial_locs,1) ~= size(file_save_time,1) % && size(s_olfactometer.program
         end
     end
 else
-    for programNum = size(programFieldNames,1):-1:1
-        programFieldName = programFieldNames(programNum);           
-        trialNum_total = size(s_olfactometer.(programFieldName).summary_by_trial,1);
-        % add a column pre-allocated with NaN where acq # per trial will go
-        s_olfactometer.(programFieldName).summary_by_trial = addvars(s_olfactometer.(programFieldName).summary_by_trial,NaN(trialNum_total,1),'NewVariableName','acqNum');
-        s_olfactometer.(programFieldName).summary_by_trial = addvars(s_olfactometer.(programFieldName).summary_by_trial,NaN(trialNum_total,1),'NewVariableName','acqIdx');
-        if ignoreLastTrial == 1
-            % had to add "if" statement here to handle case when the scope
-            % loop was aborted mid-acquisition
-            trialNum_total = trialNum_total - 1;
-        end
-        for trialNum = trialNum_total:-1:1 
-            if acq_idx > 0
-                % had to add "if" statement here to handle the case when
-                % the scope loop started after the olfactometer, causing
-                % the scope to miss the first trial
-                s_olfactometer.(programFieldName).summary_by_trial.acqNum(trialNum) = str2double(acq_list(acq_idx));
-                s_olfactometer.(programFieldName).summary_by_trial.acqIdx(trialNum) = acq_idx;
-                acq_idx = acq_idx - 1;
+    for programNum = size(programFieldNames,1):-1:1         
+        programFieldName = programFieldNames(programNum);   
+        if s_olfactometer.(programFieldName).type ~= "ignore" 
+            trialNum_total = size(s_olfactometer.(programFieldName).summary_by_trial,1);
+            % add a column pre-allocated with NaN where acq # per trial will go
+            s_olfactometer.(programFieldName).summary_by_trial = addvars(s_olfactometer.(programFieldName).summary_by_trial,NaN(trialNum_total,1),'NewVariableName','acqNum');
+            s_olfactometer.(programFieldName).summary_by_trial = addvars(s_olfactometer.(programFieldName).summary_by_trial,NaN(trialNum_total,1),'NewVariableName','acqIdx');
+            if ignoreLastTrial == 1
+                % had to add "if" statement here to handle case when the scope
+                % loop was aborted mid-acquisition
+                trialNum_total = trialNum_total - 1;
+            end
+            for trialNum = trialNum_total:-1:1 
+                if acq_idx > 0
+                    % had to add "if" statement here to handle the case when
+                    % the scope loop started after the olfactometer, causing
+                    % the scope to miss the first trial
+                    s_olfactometer.(programFieldName).summary_by_trial.acqNum(trialNum) = str2double(acq_list(acq_idx));
+                    s_olfactometer.(programFieldName).summary_by_trial.acqIdx(trialNum) = acq_idx;
+                    acq_idx = acq_idx - 1;
+                end
             end
         end
     end

@@ -216,11 +216,13 @@ for roi=1:rois_numberOf
     columns = programsToAnalyze+1;
     t = tiledlayout(rows,columns);
     title(t,figName,'Interpreter','none');
+    relativeProgramNum = 0;
     for programNum = 1:size(programFieldNames)
         programFieldName = programFieldNames(programNum);
         if s_olfactometer.(programFieldName).type ~= "ignore"
+            relativeProgramNum = relativeProgramNum + 1;
             for odorNum = 1:length(s_olfactometer.(programFieldName).odorList)
-                nexttile(programNum - ignoredPrograms + (odorNum-1)*columns)
+                nexttile(relativeProgramNum + (odorNum-1)*columns)
                 odorID = extractBetween(s_olfactometer.(programFieldName).odorList(odorNum),"I "," -");
                 odorFieldName = s_olfactometer.(programFieldName).odorFieldNames(odorNum);
                 color = odor_color.colorID(odor_color.odorID==str2double(odorID),:);
