@@ -2,6 +2,7 @@
 % Use the MAT file from timeSeriesFromFijiROIs
 % load('/Users/priscilla/Documents/Local - Moss Lab/20250624/e1/processed/matlab/2025-08-26/20250624_m0055_00003_00122_mcor_timeSeriesFromFijiROIs.mat')
 
+% TO DO
 % take quantile of all outcomes together?
 % dummy figs to help compare accross files
 
