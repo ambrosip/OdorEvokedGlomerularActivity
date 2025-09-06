@@ -60,6 +60,12 @@ frameBaselineStart = frameOdorOnset - frameOdorDuration;
 
 %% Iterate over Data
 
+% Open the first frame of the first file to get image dimensions
+filename = imgsToAnalyzeDirs(1).name;
+fileDir = imgsToAnalyzeDirs(1).folder;
+filepath = fullfile(fileDir, filename);
+frameSize = size(read_file(filepath, 1, 1));
+
 % There is one figure for each combination of program and odor
 % iFigure is the index of the figure currently being computed
 iFigure = 0;
@@ -75,7 +81,7 @@ for program_name = string(fieldnames(s_olfactometer))'
 
     % Get program number (number after 'program_')
     programSplit = split(program_name, '_');
-    programSplit = str2double(programSplit(2));
+    programNumber = str2double(programSplit(2));
 
     % Get program type 
     programType = s_olfactometer.(program_name).type;
@@ -91,13 +97,12 @@ for program_name = string(fieldnames(s_olfactometer))'
         odorTable = summaryByTrial(odorRows, :);
 
         % Initialize variables that contain the current average images
-        % MATLAB will expand those to matrices of the correct size later
         % ASSUMPTION: There is only one baseline for all outcomes!
-        avgBaseline = 0;
-        avgHit = 0;
-        avgMiss = 0;
-        avgFalse = 0;
-        avgNa = 0;
+        avgBaseline = zeros(frameSize);
+        avgHit = zeros(frameSize);
+        avgMiss = zeros(frameSize);
+        avgFalse = zeros(frameSize);
+        avgNa = zeros(frameSize);
 
         % Initialize counts of how many images where used in the average
         nBaseline = 0;
@@ -173,8 +178,14 @@ for program_name = string(fieldnames(s_olfactometer))'
         % Don't compute the ratio if there are no acquisition files
         % If there were no acquisition files nBaseline is zero
         if nBaseline == 0
+            message = ...
+                'WARNING: No files for program %d (%s) and odor %d.\n';
+            fprintf(message, programNumber, programType, odor);
             continue
         end
+
+        message = 'Analyzed %d files for program %d (%s) and odor %d.\n';
+        fprintf(message, nBaseline, programNumber, programType, odor);
 
         % Otherwise, there is one more figure to plot
         iFigure = iFigure + 1;
@@ -184,32 +195,23 @@ for program_name = string(fieldnames(s_olfactometer))'
         figures(iFigure).type = programType;
         figures(iFigure).odor = odor;
 
-        % Computes Signal to Baseline Ratio of all outcomes
-        % If there are no instances of the outcome, make it equal to NaN
-        % This will make the code for the quantiles simpler later
-        if nHit > 0
-            figures(iFigure).hit = (avgHit-avgBaseline) ./ avgBaseline;
-        else
-            figures(iFigure).hit = NaN;
-        end
-
-        if nMiss > 0
-            figures(iFigure).miss = (avgMiss-avgBaseline) ./ avgBaseline;
-        else
-            figures(iFigure).miss = NaN;
-        end
-
-        if nFalse > 0
-            figures(iFigure).false = (avgFalse-avgBaseline) ./ avgBaseline;
-        else
-            figures(iFigure).false = NaN;
-        end
-
-        if nNa > 0
-            figures(iFigure).na = (avgNa-avgBaseline) ./ avgBaseline;
-        else
-            figures(iFigure).na = NaN;
-        end
+        % Computes Signal to Baseline Ratio of all outcomes. If there are 
+        % no instances of that outcome the array will be filled with zeros.
+        figures(iFigure).hit.image = ...
+            (avgHit-avgBaseline) ./ avgBaseline;       
+        figures(iFigure).miss.image = ...
+            (avgMiss-avgBaseline) ./ avgBaseline;
+        figures(iFigure).false.image = ...
+            (avgFalse-avgBaseline) ./ avgBaseline;
+        figures(iFigure).na.image = ...
+            (avgNa-avgBaseline) ./ avgBaseline;
+        
+        % We will keep track of how many instances of each outcome we got
+        figures(iFigure).totalAcquisitions = nBaseline;
+        figures(iFigure).hit.totalNumber = nHit;
+        figures(iFigure).miss.totalNumber = nMiss;
+        figures(iFigure).false.totalNumber = nFalse;
+        figures(iFigure).na.totalNumber = nNa;
     end
 end
 
@@ -219,7 +221,10 @@ end
 % is hard to see anything else in the figure. Thus, we use quantiles to
 % exclude the outliers. The specific values (5% and 95%) are arbitrary.
 
-% The MATLAB function quantile(
+% If no files were analyzed stop computation
+if length(figures) == 0
+    error('No figures to plot.')
+end
 
 % Initiliaze limits
 lowerLimit = NaN;
@@ -232,18 +237,18 @@ upperLimit = NaN;
 for i = 1:length(figures)    
     lowerLimit = min([ ...
         lowerLimit, ...
-        quantile(figures(i).hit(:), LOWER_QUANTILE), ...
-        quantile(figures(i).miss(:), LOWER_QUANTILE), ...
-        quantile(figures(i).false(:), LOWER_QUANTILE), ...
-        quantile(figures(i).na(:), LOWER_QUANTILE) ...
+        quantile(figures(i).hit.image(:), LOWER_QUANTILE), ...
+        quantile(figures(i).miss.image(:), LOWER_QUANTILE), ...
+        quantile(figures(i).false.image(:), LOWER_QUANTILE), ...
+        quantile(figures(i).na.image(:), LOWER_QUANTILE) ...
     ]);
 
     upperLimit = max([ ...
         upperLimit, ...
-        quantile(figures(i).hit(:), UPPER_QUANTILE), ...
-        quantile(figures(i).miss(:), UPPER_QUANTILE), ...
-        quantile(figures(i).false(:), UPPER_QUANTILE), ...
-        quantile(figures(i).na(:), UPPER_QUANTILE) ...
+        quantile(figures(i).hit.image(:), UPPER_QUANTILE), ...
+        quantile(figures(i).miss.image(:), UPPER_QUANTILE), ...
+        quantile(figures(i).false.image(:), UPPER_QUANTILE), ...
+        quantile(figures(i).na.image(:), UPPER_QUANTILE) ...
     ]);   
 end
 
@@ -263,43 +268,34 @@ for iFigure = 1:length(figures)
 
     fig = figure('Name', figName);
 
-    % 3 possible outcomes in a row
+    % 3 possible outcomes in a row (or just 1 if there is NA)
     tl = tiledlayout("horizontal");
     title(tl,figName,'Interpreter','none')
 
-    nPlots = 0;
-
-    if ~isnan(figures(iFigure).hit)
+    if figures(iFigure).na.totalNumber == 0
+        nPlots = 3;
+        
         nexttile
-        imshow(figures(iFigure).hit, plotRange)
+        imshow(figures(iFigure).hit.image, plotRange)
         title('Hits', 'FontSize', 16)
-        nPlots = nPlots + 1;
-    end
-
-    if ~isnan(figures(iFigure).miss)
+    
         nexttile
-        imshow(figures(iFigure).miss, plotRange)
-        title('Misses', 'FontSize', 16)
-        nPlots = nPlots + 1;
-    end
-
-    if ~isnan(figures(iFigure).false)
-        nexttile
-        imshow(figures(iFigure).false, plotRange)
+        imshow(figures(iFigure).false.image, plotRange)
         title('False Choices', 'FontSize', 16)
-        nPlots = nPlots + 1;
-    end
 
-    if ~isnan(figures(iFigure).na)
         nexttile
-        imshow(figures(iFigure).na, plotRange)
+        imshow(figures(iFigure).miss.image, plotRange)
+        title('Misses', 'FontSize', 16)
+    else
+        nPlots = 1;
+        
+        nexttile
+        imshow(figures(iFigure).na.image, plotRange)
         title('NA', 'FontSize', 16)
-        nPlots = nPlots + 1;
     end
 
     baseSize = 600;
     fig.Position = [200 100 baseSize * nPlots baseSize + 150];
-
 
     % Uses the colormap created at the start
     cb = colorbar;
