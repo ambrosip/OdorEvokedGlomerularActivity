@@ -19,7 +19,6 @@ DEPENDS on:
     From others > ScanImageTiffReader
 
 TO DO: 
-    check if code still works for passive odor presentations (probably not cuz fml)
     re-calculate mean_dF
 %}
 
@@ -182,9 +181,14 @@ ymin = round(min(structfun(@(x) min(x,[],'all'),s_dF,'UniformOutput',true)), Tie
 xmin = round(min(xAxisInSec),TieBreaker='minusinf');
 xmax = round(max(xAxisInSec),TieBreaker='plusinf');
 
-% adjust ymin to some negative number in case it's zero
+% adjust ymin to -1 in case it's zero
 if ymin == 0
    ymin = -1;
+end
+
+% adjust max to +1 in case it's zero
+if ymax == 0
+   ymax = 1;
 end
 
 % get max number of odors used in this experiment
@@ -262,6 +266,13 @@ for roi=1:rois_numberOf
 end
 
 disp("plot done")
+
+
+%% Create dF/F images
+
+% run image_dF script;
+image_dF
+disp('I created dF/F figs')
 
 
 %% Save figs

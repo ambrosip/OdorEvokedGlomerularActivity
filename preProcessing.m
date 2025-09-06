@@ -44,15 +44,20 @@ DEPENDS on:
         > ScanImageTiffReader
 
 TO DO:
-    get extra info from log file
-    add scale bar to roi img (need to contact scanimage to inquire about roi width and height in um metadata)
+    - get extra info from log file
+    - add scale bar to roi img (need to contact scanimage to inquire about roi width and height in um metadata)
+    - add option to use first acq from previous expt to keep motion
+    correction consistent from exp to exp.
 %}
 
 
 %% USER INPUT - experiment directory and others
 
 % experiment dir to be analyzed
-expDir = '/Users/priscilla/Documents/Local - Moss Lab/20250829/e1';
+expDir = '/Users/priscilla/Documents/Local - Moss Lab/20250703/SID200';
+
+% variables made to deal with problem files
+ignoreLastTrial = 0;
 
 % set img-specific inputs
 photobleaching_window_s = 2; % duration of data in senconds that will be removed from baseline to account for photobleaching
@@ -125,6 +130,11 @@ end
 
 % create one struct per "*Events.csv" file found in any expDir subfolder
 olfactometer_event_files = dir(fullfile(expDir, '**','*Events.csv'));
+
+% order olfactometer files chronologically
+olfactometer_event_files = olfactometer_event_files(~[olfactometer_event_files.isdir]);
+[~,idx] = sort([olfactometer_event_files.datenum]);
+olfactometer_event_files = olfactometer_event_files(idx);
 
 h5_file_name = dir(fullfile(expDir, '*.h5')).name;
 h5_file_dir = fullfile(expDir,h5_file_name);
@@ -312,12 +322,25 @@ for programNum = 1:size(olfactometer_event_files,1)
             s_olfactometer.(programFieldName).outcome_by_trial = strings(trialNum_total,1);
             s_olfactometer.(programFieldName).outcome_by_trial(:,:) = "na";
         end
-    
-        s_olfactometer.(programFieldName).summary_by_trial = table(...
-            s_olfactometer.(programFieldName).odor_start_ts_labeled(:,1),...
-            s_olfactometer.(programFieldName).odor_start_ts_labeled(:,2),...
-            s_olfactometer.(programFieldName).outcome_by_trial,...
-            'VariableNames',{'min','odor','outcome'});    
+
+        % check if you have the same number of odor presentations and
+        % trials. If not, user likely aborted the program after a trial
+        % started, but before odor was presented. 
+        if size(s_olfactometer.(programFieldName).odor_start_ts_labeled,1) == size(s_olfactometer.(programFieldName).outcome_by_trial,1)    
+            s_olfactometer.(programFieldName).summary_by_trial = table(...
+                s_olfactometer.(programFieldName).odor_start_ts_labeled(:,1),...
+                s_olfactometer.(programFieldName).odor_start_ts_labeled(:,2),...
+                s_olfactometer.(programFieldName).outcome_by_trial,...
+                'VariableNames',{'min','odor','outcome'});    
+        else
+            % if you have more trials than odor presentations, throw away
+            % info about the last trial
+            s_olfactometer.(programFieldName).summary_by_trial = table(...
+                s_olfactometer.(programFieldName).odor_start_ts_labeled(:,1),...
+                s_olfactometer.(programFieldName).odor_start_ts_labeled(:,2),...
+                s_olfactometer.(programFieldName).outcome_by_trial(1:end-1),...
+                'VariableNames',{'min','odor','outcome'});
+        end
 
         acqToAnalyze = acqToAnalyze + length(s_olfactometer.(programFieldName).odor_start_ts_labeled);
     
@@ -426,7 +449,7 @@ adjusted_file_save_time = file_save_time - lag_between_last_fileSave_and_last_tr
 % start with last acq and last trial_loc
 acq_idx = size(acq_list,1);
 trial_locs_idx = size(trial_locs,1);
-if size(trial_locs,1) ~= size(file_save_time,1)
+if size(trial_locs,1) ~= size(file_save_time,1) % && size(s_olfactometer.program_1.outcome_by_trial,1) ~= size(file_save_time,1)
     for programNum = size(programFieldNames,1):-1:1
         programFieldName = programFieldNames(programNum);
         if s_olfactometer.(programFieldName).type ~= "ignore"            
@@ -455,10 +478,20 @@ else
         % add a column pre-allocated with NaN where acq # per trial will go
         s_olfactometer.(programFieldName).summary_by_trial = addvars(s_olfactometer.(programFieldName).summary_by_trial,NaN(trialNum_total,1),'NewVariableName','acqNum');
         s_olfactometer.(programFieldName).summary_by_trial = addvars(s_olfactometer.(programFieldName).summary_by_trial,NaN(trialNum_total,1),'NewVariableName','acqIdx');
-        for trialNum = trialNum_total:-1:1
-            s_olfactometer.(programFieldName).summary_by_trial.acqNum(trialNum) = str2double(acq_list(acq_idx));
-            s_olfactometer.(programFieldName).summary_by_trial.acqIdx(trialNum) = acq_idx;
-            acq_idx = acq_idx - 1;
+        if ignoreLastTrial == 1
+            % had to add "if" statement here to handle case when the scope
+            % loop was aborted mid-acquisition
+            trialNum_total = trialNum_total - 1;
+        end
+        for trialNum = trialNum_total:-1:1 
+            if acq_idx > 0
+                % had to add "if" statement here to handle the case when
+                % the scope loop started after the olfactometer, causing
+                % the scope to miss the first trial
+                s_olfactometer.(programFieldName).summary_by_trial.acqNum(trialNum) = str2double(acq_list(acq_idx));
+                s_olfactometer.(programFieldName).summary_by_trial.acqIdx(trialNum) = acq_idx;
+                acq_idx = acq_idx - 1;
+            end
         end
     end
 end
@@ -474,6 +507,7 @@ for programNum = 1:size(programFieldNames,1)
     programFieldName = programFieldNames(programNum);
     if s_olfactometer.(programFieldName).type ~= "ignore"  
         nexttile
+        yticks_nums_and_labels = ["1", "Trials"];
         plot(s_olfactometer.(programFieldName).startMin_by_trial,1,'|','Color','k','LineWidth',1)
         hold on;
         for odorNum = 1:length(s_olfactometer.(programFieldName).odorList)
@@ -481,15 +515,18 @@ for programNum = 1:size(programFieldNames,1)
             odorFieldName = s_olfactometer.(programFieldName).odorFieldNames(odorNum);
             color = odor_color.colorID(odor_color.odorID==str2double(odorID),:);
             plot(s_olfactometer.(programFieldName).(odorFieldName).startMin_by_odor,odorNum+1,'|','LineWidth',1,'Color',color)
+            yticks_nums_and_labels = [yticks_nums_and_labels; [odorNum, odorID]];
         end
         hold off;
         yMinForRaster = 0;
-        % yMaxForRaster = length(odorList)+2;
-        yMaxForRaster = 5;
+        yMaxForRaster = length(s_olfactometer.(programFieldName).odorList)+2;
+        % yMaxForRaster = 5;
         xMinForRaster = 0;
         xMaxForRaster = ceil(max(s_olfactometer.(programFieldName).summary_by_trial.min)/5)*5; % round up to nearest multiple of 5
         axis([xMinForRaster xMaxForRaster yMinForRaster yMaxForRaster])
-        yticks([]);
+        yticks(1:odorNum+1);
+        yticklabels(yticks_nums_and_labels(:,2)')
+        ylabel('Odors')
         xticks([0,xMaxForRaster]);
         xlabel('Time (min)');
         title(s_olfactometer.(programFieldName).type, 'Interpreter','none');
@@ -512,6 +549,8 @@ plot(odor_locs,odor_pks,'o','Color','m')
 plot(odor_end_locs,odor_end_pks,'*','Color','y')
 % show file save times
 xline(file_save_time - lag_between_last_fileSave_and_last_trialOnsetTrigger)
+xlabel('Time (min)')
+ylabel('TTLs (trial start, odor) and Events (acqs)','Interpreter','none')
 hold off
 disp('plot fig2 complete')
 
@@ -596,10 +635,10 @@ close all
 
 %% Save workspace
 
-% save workspace variables
-matFileName = strcat(imgsToAnalyzeNames{1}(1:end-9),'_',imgsToAnalyzeNames{end}(end-13:end-4),'_preProcessing');
-save(fullfile(saveDir,matFileName));     
-disp('saved mat file')
+% % save workspace variables
+% matFileName = strcat(imgsToAnalyzeNames{1}(1:end-9),'_',imgsToAnalyzeNames{end}(end-13:end-4),'_preProcessing');
+% save(fullfile(saveDir,matFileName));     
+% disp('saved mat file')
 
 
 %% ARCHIVE

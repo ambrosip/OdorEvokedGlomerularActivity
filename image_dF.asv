@@ -2,35 +2,14 @@
 % Use the MAT file from timeSeriesFromFijiROIs
 % load('/Users/priscilla/Documents/Local - Moss Lab/20250624/e1/processed/matlab/2025-08-26/20250624_m0055_00003_00122_mcor_timeSeriesFromFijiROIs.mat')
 
-% take quantile of all outcomes together?
-% dummy figs to help compare accross files
-
 %% USER INPUT
-
 % Define percentiles
-% LOWER_QUANTILE = 0.0001;
-% UPPER_QUANTILE = 0.9999;
-
-% LOWER_QUANTILE = 0.05;
-% UPPER_QUANTILE = 0.95;
-
-LOWER_QUANTILE = 0.01;
-UPPER_QUANTILE = 0.99;
+LOWER_QUANTILE = 0.001;
+UPPER_QUANTILE = 0.999;
 
 % Define the colors
 max_df_color = [103/255 0 31/255];
 min_df_color = [5/255 48/255 97/255];
-
-%% Extra inputs in case you run this before timeSeriesFromFijiROIs
-
-% % set default firstFig and lastFig boundaries in case user does NOT want a
-% % custom subset
-% if plotSubset == 0
-%     firstAcq = 1;
-%     lastAcq = imgsToAnalyze_numberOf;
-% end
-% firstAcqName = imgsToAnalyzeDirs(1).name;
-% lastAcqName = imgsToAnalyzeDirs(lastAcq).name;
 
 %% Creates Diverging Colormap
 
@@ -179,7 +158,7 @@ for program_name = string(fieldnames(s_olfactometer))'
         iFigure = iFigure + 1;
 
         % Add current program and odor to current figure
-        % figures(iFigure).program = programNumber;
+        figures(iFigure).program = programNumber;
         figures(iFigure).type = programType;
         figures(iFigure).odor = odor;
 
@@ -258,13 +237,15 @@ for iFigure = 1:length(figures)
     figName = strcat(firstAcqName(2:end), '_to_', ...
         lastAcqName(end-fileNameIdxStart+4:end-fileNameIdxEnd+4), ...
         '_odor_', num2str(figures(iFigure).odor), ...
-        '_', figures(iFigure).type);
+        '_', figures(iFigure).type)
 
-    fig = figure('Name', figName);
+figures(iFigure).type = programType;
+        figures(iFigure).odor = odor;
+
+    fig = figure('Name', 'test_figure');
 
     % 3 possible outcomes in a row
     tl = tiledlayout("horizontal");
-    title(tl,figName,'Interpreter','none')
 
     nPlots = 0;
 
@@ -299,7 +280,6 @@ for iFigure = 1:length(figures)
     baseSize = 600;
     fig.Position = [200 100 baseSize * nPlots baseSize + 150];
 
-
     % Uses the colormap created at the start
     cb = colorbar;
     cb.Layout.Tile = "south";
@@ -307,8 +287,7 @@ for iFigure = 1:length(figures)
     colormap(divergingGradient);
     clim(plotRange);
     
-    % ylabel(cb,'$dF/F$', 'interpreter', 'latex', 'FontSize', 16);
-    ylabel(cb,'dF/F', 'FontSize', 16);
+    ylabel(cb,'$dF/F$', 'interpreter', 'latex', 'FontSize', 16);
 
     tl.TileSpacing = "compact";
     tl.Padding = "compact";
