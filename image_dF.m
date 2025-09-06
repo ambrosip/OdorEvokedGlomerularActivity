@@ -1,12 +1,17 @@
 %% Load MAT files (in case variables are not in the environment)
 % Use the MAT file from timeSeriesFromFijiROIs
-load(['../for image df/matlab/2025-08-26/' ... 
-    '20250624_m0055_00003_00122_mcor_timeSeriesFromFijiROIs.mat'])
+% load('/Users/priscilla/Documents/Local - Moss Lab/20250624/e1/processed/matlab/2025-08-26/20250624_m0055_00003_00122_mcor_timeSeriesFromFijiROIs.mat')
+
+%% USER INPUT
+% Define percentiles
+LOWER_QUANTILE = 0.001;
+UPPER_QUANTILE = 0.999;
+
+% Define the colors
+max_df_color = [103/255 0 31/255];
+min_df_color = [5/255 48/255 97/255];
 
 %% Creates Diverging Colormap
-% Define the colors
-REDDISH_PURPLE = [.8000 .4745 .6549];
-BLUE           = [    0 .4471 .6980];
 
 % Creates 512 color steps between the two colors (512 is arbitrary)
 % The number just need to be high enough for the gradient to be smooth
@@ -14,7 +19,7 @@ colorpoints = linspace(0.0, 1.0, 512);
 
 % This function is from the following website:
 % https://www.kennethmoreland.com/color-maps/
-divergingGradient = divergingMap(colorpoints, BLUE, REDDISH_PURPLE);
+divergingGradient = divergingMap(colorpoints, min_df_color, max_df_color);
 
 %% Compute Relevant Frames
 
@@ -48,8 +53,12 @@ for program_name = string(fieldnames(s_olfactometer))'
 
     % Get program number (number after 'program_')
     programSplit = split(program_name, '_');
-    programNumber = str2double(programSplit(2));
-        
+    programSplit = str2double(programSplit(2));
+
+    % Get program type 
+    programType = s_olfactometer.(program_name).type;
+    
+    % Get odor and outcome info
     summaryByTrial = program.summary_by_trial;
     programOdors = unique(summaryByTrial.odor);
     
@@ -66,12 +75,14 @@ for program_name = string(fieldnames(s_olfactometer))'
         avgHit = 0;
         avgMiss = 0;
         avgFalse = 0;
+        avgNa = 0;
 
         % Initialize counts of how many images where used in the average
         nBaseline = 0;
         nHit = 0;
         nMiss = 0;
         nFalse = 0;
+        nNa = 0;
 
         for row = 1:height(odorTable)
             acqIdx = odorTable{row, 'acqIdx'};
@@ -87,7 +98,7 @@ for program_name = string(fieldnames(s_olfactometer))'
             
             % Skips computation and prints warning if file not found
             if ~isfile(filepath)
-                % fprintf("WARNING: File %s not found.\n", filename)
+                fprintf("WARNING: File %s not found.\n", filename)
                 continue
             end
 
@@ -127,6 +138,12 @@ for program_name = string(fieldnames(s_olfactometer))'
                     avgFalse = ...
                         avgFalse * (nFalse - 1) / nFalse + ...
                         mean(frames, ndims(frames)) / nFalse;
+
+                case "na"
+                    nNa = nNa + 1;
+                    avgNa = ...
+                        avgNa * (nNa - 1) / nNa + ...
+                        mean(frames, ndims(frames)) / nNa;
             
             end
         end
@@ -141,7 +158,8 @@ for program_name = string(fieldnames(s_olfactometer))'
         iFigure = iFigure + 1;
 
         % Add current program and odor to current figure
-        figures(iFigure).program = programNumber;
+        % figures(iFigure).program = programNumber;
+        figures(iFigure).type = programType;
         figures(iFigure).odor = odor;
 
         % Computes Signal to Baseline Ratio of all outcomes
@@ -164,6 +182,12 @@ for program_name = string(fieldnames(s_olfactometer))'
         else
             figures(iFigure).false = NaN;
         end
+
+        if nNa > 0
+            figures(iFigure).na = (avgNa-avgBaseline) ./ avgBaseline;
+        else
+            figures(iFigure).na = NaN;
+        end
     end
 end
 
@@ -181,21 +205,23 @@ upperLimit = NaN;
 
 % Compute limits figure by figure. The number lowerLimit will be the
 % smallest of all the 5% quantiles and upperLimit will be the largest of
-% all the 95% quantiles.
-
+% all the 95% quantiles (if LOWER_QUANTILE is set to 0.05 and
+% UPPER_QUANTILE is set to 0.95)
 for i = 1:length(figures)    
     lowerLimit = min([ ...
         lowerLimit, ...
-        quantile(figures(i).hit(:), 0.05), ...
-        quantile(figures(i).miss(:), 0.05), ...
-        quantile(figures(i).false(:), 0.05) ...
+        quantile(figures(i).hit(:), LOWER_QUANTILE), ...
+        quantile(figures(i).miss(:), LOWER_QUANTILE), ...
+        quantile(figures(i).false(:), LOWER_QUANTILE), ...
+        quantile(figures(i).na(:), LOWER_QUANTILE) ...
     ]);
 
     upperLimit = max([ ...
         upperLimit, ...
-        quantile(figures(i).hit(:), 0.95), ...
-        quantile(figures(i).miss(:), 0.95), ...
-        quantile(figures(i).false(:), 0.95) ...
+        quantile(figures(i).hit(:), UPPER_QUANTILE), ...
+        quantile(figures(i).miss(:), UPPER_QUANTILE), ...
+        quantile(figures(i).false(:), UPPER_QUANTILE), ...
+        quantile(figures(i).na(:), UPPER_QUANTILE) ...
     ]);   
 end
 
@@ -208,10 +234,16 @@ absoluteLimit = double(max(abs(upperLimit), abs(lowerLimit)));
 plotRange = [-absoluteLimit absoluteLimit];
 
 for iFigure = 1:length(figures)
-    fig = figure('Name', 'test_figure');
+    figName = strcat(firstAcqName(2:end), '_to_', ...
+        lastAcqName(end-fileNameIdxStart+4:end-fileNameIdxEnd+4), ...
+        '_odor_', num2str(figures(iFigure).odor), ...
+        '_', figures(iFigure).type);
+
+    fig = figure('Name', figName);
 
     % 3 possible outcomes in a row
     tl = tiledlayout("horizontal");
+    title(tl,figName,'Interpreter','none')
 
     nPlots = 0;
 
@@ -236,8 +268,16 @@ for iFigure = 1:length(figures)
         nPlots = nPlots + 1;
     end
 
+    if ~isnan(figures(iFigure).na)
+        nexttile
+        imshow(figures(iFigure).na, plotRange)
+        title('NA', 'FontSize', 16)
+        nPlots = nPlots + 1;
+    end
+
     baseSize = 600;
     fig.Position = [200 100 baseSize * nPlots baseSize + 150];
+
 
     % Uses the colormap created at the start
     cb = colorbar;
