@@ -19,8 +19,8 @@ LOWER_QUANTILE = 0.01;
 UPPER_QUANTILE = 0.99;
 
 % Define the colors
-max_df_color = [103/255 0 31/255];
-min_df_color = [5/255 48/255 97/255];
+max_df_color = [103 0 31] / 255;
+min_df_color = [5 48 97] / 255;
 
 %% Extra inputs in case you run this before timeSeriesFromFijiROIs
 
@@ -45,7 +45,7 @@ divergingGradient = divergingMap(colorpoints, min_df_color, max_df_color);
 
 %% Compute Relevant Frames
 
-% ASSUMPTIONS: 
+% ASSUMPTIONS:
 %   1 - Baseline and Signal intervals have the same number of frames
 %   2 - Signal interval is the odor presentation interval
 
@@ -74,22 +74,25 @@ iFigure = 0;
 for program_name = string(fieldnames(s_olfactometer))'
     program = s_olfactometer.(program_name);
 
-    % Skip programs that don't have summaries
-    if ~isfield(program, 'summary_by_trial')
-        continue
-    end
-
     % Get program number (number after 'program_')
     programSplit = split(program_name, '_');
     programNumber = str2double(programSplit(2));
 
-    % Get program type 
+    % Skip programs that don't have summaries
+    if ~isfield(program, 'summary_by_trial')
+        message = ['WARNING: Skipping program %d because ' ...
+            'it was marked as ''ignore''.\n'];
+        fprintf(message, programNumber)
+        continue
+    end
+
+    % Get program type
     programType = s_olfactometer.(program_name).type;
-    
+
     % Get odor and outcome info
     summaryByTrial = program.summary_by_trial;
     programOdors = unique(summaryByTrial.odor);
-    
+
     % Iterating through odors in the program
     for odor = programOdors'
         % Get table with data only for the current odor
@@ -122,17 +125,17 @@ for program_name = string(fieldnames(s_olfactometer))'
             filename = imgsToAnalyzeDirs(acqIdx).name;
             fileDir = imgsToAnalyzeDirs(acqIdx).folder;
             filepath = fullfile(fileDir, filename);
-            
+
             % Skips computation and prints warning if file not found
             if ~isfile(filepath)
-                fprintf("WARNING: File %s not found.\n", filename)
+                fprintf('WARNING: File %s not found.\n', filename)
                 continue
             end
 
             % Since there is a file, we increase the baseline counter
             nBaseline = nBaseline + 1;
 
-            % Load and computes the mean of the relevant frames      
+            % Load and computes the mean of the relevant frames
             % We use a trick to compute the average on the fly:
             % https://stackoverflow.com/a/23493727
             frames = single(read_file( ...
@@ -141,37 +144,37 @@ for program_name = string(fieldnames(s_olfactometer))'
             avgBaseline = ...
                 avgBaseline * (nBaseline-1) / nBaseline + ...
                 mean(frames, ndims(frames)) / nBaseline;
-            
+
             % Do the same as above, but for the corresponding outcome
             % The array 'frames' is the same for all possible outcomes
             frames = single(read_file( ...
-                        filepath, frameOdorOnset, frameOdorDuration));
+                filepath, frameOdorOnset, frameOdorDuration));
 
             switch odorTable{row, 'outcome'}
-                case "hit"
+                case 'hit'
                     nHit = nHit + 1;
                     avgHit = ...
                         avgHit * (nHit - 1) / nHit + ...
                         mean(frames, ndims(frames)) / nHit;
-                
-                case "miss"
+
+                case 'miss'
                     nMiss = nMiss + 1;
                     avgMiss = ...
                         avgMiss * (nMiss - 1) / nMiss + ...
                         mean(frames, ndims(frames)) / nMiss;
 
-                case "false choice"
+                case 'false choice'
                     nFalse = nFalse + 1;
                     avgFalse = ...
                         avgFalse * (nFalse - 1) / nFalse + ...
                         mean(frames, ndims(frames)) / nFalse;
 
-                case "na"
+                case 'na'
                     nNa = nNa + 1;
                     avgNa = ...
                         avgNa * (nNa - 1) / nNa + ...
                         mean(frames, ndims(frames)) / nNa;
-            
+
             end
         end
 
@@ -195,17 +198,17 @@ for program_name = string(fieldnames(s_olfactometer))'
         figures(iFigure).type = programType;
         figures(iFigure).odor = odor;
 
-        % Computes Signal to Baseline Ratio of all outcomes. If there are 
+        % Computes Signal to Baseline Ratio of all outcomes. If there are
         % no instances of that outcome the array will be filled with zeros.
         figures(iFigure).hit.image = ...
-            (avgHit-avgBaseline) ./ avgBaseline;       
+            (avgHit - avgBaseline) ./ avgBaseline;
         figures(iFigure).miss.image = ...
-            (avgMiss-avgBaseline) ./ avgBaseline;
+            (avgMiss - avgBaseline) ./ avgBaseline;
         figures(iFigure).false.image = ...
-            (avgFalse-avgBaseline) ./ avgBaseline;
+            (avgFalse - avgBaseline) ./ avgBaseline;
         figures(iFigure).na.image = ...
-            (avgNa-avgBaseline) ./ avgBaseline;
-        
+            (avgNa - avgBaseline) ./ avgBaseline;
+
         % We will keep track of how many instances of each outcome we got
         figures(iFigure).totalAcquisitions = nBaseline;
         figures(iFigure).hit.totalNumber = nHit;
@@ -234,7 +237,7 @@ upperLimit = NaN;
 % smallest of all the 5% quantiles and upperLimit will be the largest of
 % all the 95% quantiles (if LOWER_QUANTILE is set to 0.05 and
 % UPPER_QUANTILE is set to 0.95)
-for i = 1:length(figures)    
+for i = 1:length(figures)
     lowerLimit = min([ ...
         lowerLimit, ...
         quantile(figures(i).hit.image(:), LOWER_QUANTILE), ...
@@ -249,7 +252,7 @@ for i = 1:length(figures)
         quantile(figures(i).miss.image(:), UPPER_QUANTILE), ...
         quantile(figures(i).false.image(:), UPPER_QUANTILE), ...
         quantile(figures(i).na.image(:), UPPER_QUANTILE) ...
-    ]);   
+    ]);
 end
 
 % Take the limit that is larger in absolute value
@@ -269,16 +272,16 @@ for iFigure = 1:length(figures)
     fig = figure('Name', figName);
 
     % 3 possible outcomes in a row (or just 1 if there is NA)
-    tl = tiledlayout("horizontal");
-    title(tl,figName,'Interpreter','none')
+    tl = tiledlayout('horizontal');
+    title(tl, figName, 'Interpreter', 'none');
 
     if figures(iFigure).na.totalNumber == 0
         nPlots = 3;
-        
+
         nexttile
         imshow(figures(iFigure).hit.image, plotRange)
         title('Hits', 'FontSize', 16)
-    
+
         nexttile
         imshow(figures(iFigure).false.image, plotRange)
         title('False Choices', 'FontSize', 16)
@@ -288,7 +291,7 @@ for iFigure = 1:length(figures)
         title('Misses', 'FontSize', 16)
     else
         nPlots = 1;
-        
+
         nexttile
         imshow(figures(iFigure).na.image, plotRange)
         title('NA', 'FontSize', 16)
@@ -299,16 +302,16 @@ for iFigure = 1:length(figures)
 
     % Uses the colormap created at the start
     cb = colorbar;
-    cb.Layout.Tile = "south";
+    cb.Layout.Tile = 'south';
 
     colormap(divergingGradient);
     clim(plotRange);
-    
-    % ylabel(cb,'$dF/F$', 'interpreter', 'latex', 'FontSize', 16);
-    ylabel(cb,'dF/F', 'FontSize', 16);
 
-    tl.TileSpacing = "compact";
-    tl.Padding = "compact";
-    
+    % ylabel(cb, '$dF/F$', 'interpreter', 'latex', 'FontSize', 16);
+    ylabel(cb, 'dF/F', 'FontSize', 16);
+
+    tl.TileSpacing = 'compact';
+    tl.Padding = 'compact';
+
     drawnow;
 end
