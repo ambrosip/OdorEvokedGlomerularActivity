@@ -201,13 +201,13 @@ for program_name = string(fieldnames(s_olfactometer))'
         % Computes Signal to Baseline Ratio of all outcomes. If there are
         % no instances of that outcome the array will be filled with zeros.
         figures(iFigure).hit.image = ...
-            (avgHit - avgBaseline) ./ avgBaseline;
+            (nHit > 0) * (avgHit - avgBaseline) ./ avgBaseline;
         figures(iFigure).miss.image = ...
-            (avgMiss - avgBaseline) ./ avgBaseline;
+            (nMiss > 0) * (avgMiss - avgBaseline) ./ avgBaseline;
         figures(iFigure).false.image = ...
-            (avgFalse - avgBaseline) ./ avgBaseline;
+            (nFalse > 0) * (avgFalse - avgBaseline) ./ avgBaseline;
         figures(iFigure).na.image = ...
-            (avgNa - avgBaseline) ./ avgBaseline;
+            (nNa > 0) * (avgNa - avgBaseline) ./ avgBaseline;
 
         % We will keep track of how many instances of each outcome we got
         figures(iFigure).totalAcquisitions = nBaseline;
@@ -225,7 +225,7 @@ end
 % exclude the outliers. The specific values (5% and 95%) are arbitrary.
 
 % If no files were analyzed stop computation
-if length(figures) == 0
+if isempty(figures)
     error('No figures to plot.')
 end
 
