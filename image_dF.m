@@ -4,7 +4,6 @@
 
 % TO DO
 % take quantile of all outcomes together?
-% dummy figs to help compare accross files
 
 %% USER INPUT
 
@@ -267,11 +266,11 @@ for iFigure = 1:length(figures)
     % Get figure name
     % Get the start of firstAcqName (before the third underline)
     figNameStart = split(string(firstAcqName), '_');
-    figNameStart = join(figNameStart(1:3), '_');
+    figNameStart = join(figNameStart(1:end-1), '_');
 
     % Get the number of the last acquisition
     figNameMiddle = split(string(lastAcqName), '_');
-    figNameMiddle = figNameMiddle(3);
+    figNameMiddle = figNameMiddle(end-1);
 
     % Reformats program type string from "Fine 1" to "fine_1", for example
     figNameEnd = join(split(lower(figures(iFigure).type)), '_');
