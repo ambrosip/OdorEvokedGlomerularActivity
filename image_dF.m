@@ -264,10 +264,21 @@ absoluteLimit = double(max(abs(upperLimit), abs(lowerLimit)));
 plotRange = [-absoluteLimit absoluteLimit];
 
 for iFigure = 1:length(figures)
-    figName = strcat(firstAcqName(2:end), '_to_', ...
-        lastAcqName(end-fileNameIdxStart+4:end-fileNameIdxEnd+4), ...
-        '_odor_', num2str(figures(iFigure).odor), ...
-        '_', figures(iFigure).type);
+    % Get figure name
+    % Get the start of firstAcqName (before the third underline)
+    figNameStart = split(string(firstAcqName), '_');
+    figNameStart = join(figNameStart(1:3), '_');
+
+    % Get the number of the last acquisition
+    figNameMiddle = split(string(lastAcqName), '_');
+    figNameMiddle = figNameMiddle(3);
+
+    % Reformats program type string from "Fine 1" to "fine_1", for example
+    figNameEnd = join(split(lower(figures(iFigure).type)), '_');
+
+    % Join results in the correct format
+    figName = sprintf("%s_to_%s_odor_%d_%s", figNameStart, ...
+        figNameMiddle, figures(iFigure).odor, figNameEnd);
 
     fig = figure('Name', figName);
 
