@@ -1,7 +1,6 @@
 %% Load MAT files (in case variables are not in the environment)
 % Use the MAT file from timeSeriesFromFijiROIs
 % load('/Users/priscilla/Documents/Local - Moss Lab/20250624/e1/processed/matlab/2025-08-26/20250624_m0055_00003_00122_mcor_timeSeriesFromFijiROIs.mat')
-load('/Users/priscilla/Documents/Local - Moss Lab/20250903/e2/processed/matlab/2025-09-06/20250903_sid169_e2_00001_00130_mcor_timeSeriesFromFijiROIs.mat')
 
 % TO DO
 % take quantile of all outcomes together?
@@ -69,9 +68,6 @@ fileDir = imgsToAnalyzeDirs(1).folder;
 filepath = fullfile(fileDir, filename);
 frameSize = size(read_file(filepath, 1, 1));
 
-% Blank image for outcomes with no corresponding acquisition
-blankImage = zeros(frameSize);
-
 % There is one figure for each combination of program and odor
 % iFigure is the index of the figure currently being computed
 iFigure = 0;
@@ -101,29 +97,24 @@ for program_name = string(fieldnames(s_olfactometer))'
 
     % Iterating through odors in the program
     for odor = programOdors'
-        % Add one figure to the figure list and record its program type,
-        % odor number, and number of acquisitions
-        iFigure = iFigure + 1;
-        
-        figures(iFigure).type = programType;
-        figures(iFigure).odor = odor;
-        figures(iFigure).acquisitions = 0;
-
         % Get table with data only for the current odor
         odorRows = summaryByTrial.odor == odor;
         odorTable = summaryByTrial(odorRows, :);
 
-        % Initialize counts of how many images where used in the average
-        figures(iFigure).hit.total = 0;
-        figures(iFigure).miss.total = 0;
-        figures(iFigure).false.total = 0;
-        figures(iFigure).na.total = 0;
+        % Initialize variables that contain the current average images
+        % ASSUMPTION: There is only one baseline for all outcomes!
+        avgBaseline = zeros(frameSize);
+        avgHit = zeros(frameSize);
+        avgMiss = zeros(frameSize);
+        avgFalse = zeros(frameSize);
+        avgNa = zeros(frameSize);
 
-        % Initialize average signal-to-baseline ratio images
-        figures(iFigure).hit.image = zeros(frameSize);
-        figures(iFigure).miss.image = zeros(frameSize);
-        figures(iFigure).false.image = zeros(frameSize);
-        figures(iFigure).na.image = zeros(frameSize);
+        % Initialize counts of how many images where used in the average
+        nBaseline = 0;
+        nHit = 0;
+        nMiss = 0;
+        nFalse = 0;
+        nNa = 0;
 
         for row = 1:height(odorTable)
             acqIdx = odorTable{row, 'acqIdx'};
@@ -143,45 +134,55 @@ for program_name = string(fieldnames(s_olfactometer))'
                 continue
             end
 
+            % Since there is a file, we increase the baseline counter
+            nBaseline = nBaseline + 1;
+
             % Load and computes the mean of the relevant frames
-            
-            % For the baseline
+            % We use a trick to compute the average on the fly:
+            % https://stackoverflow.com/a/23493727
             frames = single(read_file( ...
                 filepath, frameBaselineStart, frameOdorDuration));
-            baselineImage = mean(frames, ndims(frames));
 
-            % For the signal
+            avgBaseline = ...
+                avgBaseline * (nBaseline-1) / nBaseline + ...
+                mean(frames, ndims(frames)) / nBaseline;
+
+            % Do the same as above, but for the corresponding outcome
+            % The array 'frames' is the same for all possible outcomes
             frames = single(read_file( ...
                 filepath, frameOdorOnset, frameOdorDuration));
-            signalImage = mean(frames, ndims(frames));
 
-            signalBaselineRatio = ...
-                (signalImage - baselineImage) ./ baselineImage;
-            
-            % outcome is the first word of the outcome name
-            % Possibilities are "hit", "miss", "false", and "na".
-            outcome = split(odorTable{row, 'outcome'});
-            outcome = outcome(1);
+            switch odorTable{row, 'outcome'}
+                case 'hit'
+                    nHit = nHit + 1;
+                    avgHit = ...
+                        avgHit * (nHit - 1) / nHit + ...
+                        mean(frames, ndims(frames)) / nHit;
 
-            % Increments counters and create a copy (with a shorter name)
-            figures(iFigure).acquisitions = ...
-                figures(iFigure).acquisitions + 1;
-            figures(iFigure).(outcome).total = ...
-                figures(iFigure).(outcome).total + 1;
+                case 'miss'
+                    nMiss = nMiss + 1;
+                    avgMiss = ...
+                        avgMiss * (nMiss - 1) / nMiss + ...
+                        mean(frames, ndims(frames)) / nMiss;
 
-            n = figures(iFigure).(outcome).total;
+                case 'false choice'
+                    nFalse = nFalse + 1;
+                    avgFalse = ...
+                        avgFalse * (nFalse - 1) / nFalse + ...
+                        mean(frames, ndims(frames)) / nFalse;
 
-            % Add signal-to-baseline ratio to the average
-            % We use a simple trick to compute the average on the fly:
-            % https://stackoverflow.com/a/23493727
-            figures(iFigure).(outcome).image = ...
-                figures(iFigure).(outcome).image * (n - 1) / n + ...
-                signalBaselineRatio / n;
+                case 'na'
+                    nNa = nNa + 1;
+                    avgNa = ...
+                        avgNa * (nNa - 1) / nNa + ...
+                        mean(frames, ndims(frames)) / nNa;
+
+            end
         end
 
         % Don't compute the ratio if there are no acquisition files
         % If there were no acquisition files nBaseline is zero
-        if figures(iFigure).acquisitions == 0
+        if nBaseline == 0
             message = ...
                 'WARNING: No files for program %d (%s) and odor %d.\n';
             fprintf(message, programNumber, programType, odor);
@@ -189,8 +190,33 @@ for program_name = string(fieldnames(s_olfactometer))'
         end
 
         message = 'Analyzed %d files for program %d (%s) and odor %d.\n';
-        fprintf(message, figures(iFigure).acquisitions, ...
-            programNumber, programType, odor);
+        fprintf(message, nBaseline, programNumber, programType, odor);
+
+        % Otherwise, there is one more figure to plot
+        iFigure = iFigure + 1;
+
+        % Add current program and odor to current figure
+        % figures(iFigure).program = programNumber;
+        figures(iFigure).type = programType;
+        figures(iFigure).odor = odor;
+
+        % Computes Signal to Baseline Ratio of all outcomes. If there are
+        % no instances of that outcome the array will be filled with zeros.
+        figures(iFigure).hit.image = ...
+            (nHit > 0) * (avgHit - avgBaseline) ./ avgBaseline;
+        figures(iFigure).miss.image = ...
+            (nMiss > 0) * (avgMiss - avgBaseline) ./ avgBaseline;
+        figures(iFigure).false.image = ...
+            (nFalse > 0) * (avgFalse - avgBaseline) ./ avgBaseline;
+        figures(iFigure).na.image = ...
+            (nNa > 0) * (avgNa - avgBaseline) ./ avgBaseline;
+
+        % We will keep track of how many instances of each outcome we got
+        figures(iFigure).totalAcquisitions = nBaseline;
+        figures(iFigure).hit.totalNumber = nHit;
+        figures(iFigure).miss.totalNumber = nMiss;
+        figures(iFigure).false.totalNumber = nFalse;
+        figures(iFigure).na.totalNumber = nNa;
     end
 end
 
@@ -264,7 +290,7 @@ for iFigure = 1:length(figures)
     tl = tiledlayout('horizontal');
     title(tl, figName, 'Interpreter', 'none');
 
-    if figures(iFigure).na.total == 0
+    if figures(iFigure).na.totalNumber == 0
         nPlots = 3;
 
         nexttile
