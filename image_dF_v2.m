@@ -144,14 +144,18 @@ for program_name = string(fieldnames(s_olfactometer))'
 
             % Load and computes the mean of the relevant frames
             
-            % For the baseline
+            % Note that since read_file returns a matrix of integers from
+            % [-32768, 32767] we need to add 32768 to that matrix to shift its
+            % values to the [0, 65535] range.
+            
+            % Load frames for the baseline window
             frames = single(read_file( ...
-                filepath, frameBaselineStart, frameOdorDuration));
+                filepath, frameBaselineStart, frameOdorDuration)) + 32768;
             baselineImage = mean(frames, ndims(frames));
 
-            % For the signal
+            % Load frames for the signal window
             frames = single(read_file( ...
-                filepath, frameOdorOnset, frameOdorDuration));
+                filepath, frameOdorOnset, frameOdorDuration)) + 32768;
             signalImage = mean(frames, ndims(frames));
 
             signalBaselineRatio = ...
