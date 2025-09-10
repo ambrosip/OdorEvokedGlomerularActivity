@@ -7,6 +7,9 @@
 
 %% USER INPUT
 
+autoColobarLimits = 0;
+absoluteLimit = 1;
+
 % Define percentiles
 % LOWER_QUANTILE = 0.0001;
 % UPPER_QUANTILE = 0.9999;
@@ -23,14 +26,14 @@ min_df_color = [5 48 97] / 255;
 
 %% Extra inputs in case you run this before timeSeriesFromFijiROIs
 
-% % set default firstFig and lastFig boundaries in case user does NOT want a
-% % custom subset
-% if plotSubset == 0
-%     firstAcq = 1;
-%     lastAcq = imgsToAnalyze_numberOf;
-% end
-% firstAcqName = imgsToAnalyzeDirs(1).name;
-% lastAcqName = imgsToAnalyzeDirs(lastAcq).name;
+% set default firstFig and lastFig boundaries in case user does NOT want a
+% custom subset
+if plotSubset == 0
+    firstAcq = 1;
+    lastAcq = imgsToAnalyze_numberOf;
+end
+firstAcqName = imgsToAnalyzeDirs(1).name;
+lastAcqName = imgsToAnalyzeDirs(lastAcq).name;
 
 %% Creates Diverging Colormap
 
@@ -254,9 +257,11 @@ for i = 1:length(figures)
     ]);
 end
 
-% Take the limit that is larger in absolute value
-% It also turns it into a double because that is a requirement for plots
-absoluteLimit = double(max(abs(upperLimit), abs(lowerLimit)));
+if autoColobarLimits == 1
+    % Take the limit that is larger in absolute value
+    % It also turns it into a double because that is a requirement for plots
+    absoluteLimit = double(max(abs(upperLimit), abs(lowerLimit)));
+end
 
 % Make range symmetrical around zero (so white means zero in the plots).
 % The same range will be used for all figures, for easy comparisons.

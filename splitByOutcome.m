@@ -50,7 +50,7 @@ end
 % iterate through rois
 ignoredPrograms = size(programFieldNames,1) - programsToAnalyze;
 for roi=1:rois_numberOf
-    figName = strcat(firstAcqName(2:end), '_to_', lastAcqName(2:end), '_roi_', num2str(roi), '_dF');
+    figName = strcat(firstAcqName(2:end), '_to_', lastAcqName(2:end), '_split_roi_', num2str(roi), '_dF');
     fig = figure('Name',figName);
     set(gca,'FontName','Arial');
     set(gcf,'OuterPosition',[100 100 1200 900]); % [left bottom width height]
@@ -60,11 +60,13 @@ for roi=1:rois_numberOf
     columns = programsToAnalyze+1;
     t = tiledlayout(rows,columns);
     title(t,figName,'Interpreter','none');
+    relativeProgramNum = 0;
     for programNum = 1:size(programFieldNames)
         programFieldName = programFieldNames(programNum);
         if s_olfactometer.(programFieldName).type ~= "ignore"
+            relativeProgramNum = relativeProgramNum + 1;
             for odorNum = 1:length(s_olfactometer.(programFieldName).odorList)
-                nexttile(programNum - ignoredPrograms + (odorNum-1)*columns)
+                nexttile(relativeProgramNum + (odorNum-1)*columns)
                 odorID = extractBetween(s_olfactometer.(programFieldName).odorList(odorNum),"I "," -");
                 odorFieldName = s_olfactometer.(programFieldName).odorFieldNames(odorNum);
                 % color = odor_color.colorID(odor_color.odorID==str2double(odorID),:);

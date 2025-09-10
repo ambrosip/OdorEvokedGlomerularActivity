@@ -173,7 +173,7 @@ disp("calculated dF/F")
 
 %% PLOT data in ROIs organized by odor (rows) and program type (columns)
 
-% get max and min value of dF/F to set y axis limits
+% get max and min value cof dF/F to set y axis limits
 ymax = round(max(structfun(@(x) max(x,[],'all'),s_dF,'UniformOutput',true)), TieBreaker='plusinf');
 ymin = round(min(structfun(@(x) min(x,[],'all'),s_dF,'UniformOutput',true)), TieBreaker='minusinf');
 
@@ -272,9 +272,9 @@ disp("plot done")
 
 %% Create dF/F images
 
-% run image_dF script;
-image_dF
-disp('I created dF/F figs')
+% % run image_dF script;
+% image_dF
+% disp('I created dF/F figs')
 
 
 %% Save figs

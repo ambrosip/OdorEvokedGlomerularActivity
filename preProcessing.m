@@ -54,10 +54,11 @@ TO DO:
 %% USER INPUT - experiment directory and others
 
 % experiment dir to be analyzed
-expDir = '/Users/priscilla/Documents/Local - Moss Lab/20250903/e2';
+expDir = '/Users/priscilla/Documents/Local - Moss Lab/20250625';
 
 % variables made to deal with problem files
 ignoreLastTrial = 0;
+ignoreFirstTrials = 0;
 
 % set img-specific inputs
 photobleaching_window_s = 2; % duration of data in senconds that will be removed from baseline to account for photobleaching
@@ -216,7 +217,7 @@ for programNum = 1:size(olfactometer_event_files,1)
     s_olfactometer.(programFieldName).folder = olfactometer_event_files(programNum).folder;
     s_olfactometer.(programFieldName).date = olfactometer_event_files(programNum).date;
     s_olfactometer.(programFieldName).dir = fullfile(s_olfactometer.(programFieldName).folder, s_olfactometer.(programFieldName).name);
-    % load csv data and speficy text data as string instead of char
+    % load csv data and specify text data as string instead of char
     s_olfactometer.(programFieldName).file = readtable(s_olfactometer.(programFieldName).dir, TextType="string");
     s_olfactometer.(programFieldName).shortName = s_olfactometer.(programFieldName).name(end-29:end-4);
     % find rows inside Events csv with trial starts
@@ -421,7 +422,9 @@ x_minutes_h5 = x_data_points_h5/samplerate/60;
 
 % find onset of TTL pulses
 [trial_pks,trial_locs]=findpeaks(diff(trial_start_TTL),'MinPeakHeight',2);
-[odor_pks,odor_locs]=findpeaks(diff(odor_TTL),'MinPeakHeight',2);
+[odor_pks,odor_locs]=findpeaks(diff(odor_TTL),'MinPeakHeight',2,'MinPeakDistance',samplerate/100);
+    % added MinPeakDistance of 10 ms to deal with problematic file where
+    % code found 2 odor_locs right next to each other
 
 % find offset of odor TTL pulse
 [odor_end_pks,odor_end_locs]=findpeaks(-diff(odor_TTL),'MinPeakHeight',2);
@@ -448,25 +451,66 @@ adjusted_file_save_time = file_save_time - lag_between_last_fileSave_and_last_tr
 % annotate trials with missing acquisitions
 % start with last acq and last trial_loc
 acq_idx = size(acq_list,1);
+acq_list_subset = acq_list;
+acq_idx_subset = (1:size(acq_list,1))';
 trial_locs_idx = size(trial_locs,1);
-if size(trial_locs,1) ~= size(file_save_time,1) % && size(s_olfactometer.program_1.outcome_by_trial,1) ~= size(file_save_time,1)
-    for programNum = size(programFieldNames,1):-1:1
-        programFieldName = programFieldNames(programNum);
-        if s_olfactometer.(programFieldName).type ~= "ignore"            
-            trialNum_total = size(s_olfactometer.(programFieldName).summary_by_trial,1);
-            % add a column pre-allocated with NaN where acq # per trial will go
-            s_olfactometer.(programFieldName).summary_by_trial = addvars(s_olfactometer.(programFieldName).summary_by_trial,NaN(trialNum_total,1),'NewVariableName','acqNum');
-            s_olfactometer.(programFieldName).summary_by_trial = addvars(s_olfactometer.(programFieldName).summary_by_trial,NaN(trialNum_total,1),'NewVariableName','acqIdx');
-            for trialNum = trialNum_total:-1:1
-                if abs(trial_locs(trial_locs_idx) - adjusted_file_save_time(acq_idx)) > tolerance
-                % if round(trial_locs(trial_locs_idx),1) ~= round(adjusted_file_save_time(acq_idx),1) % this method failed
-                    disp('oops we have trials without acq')
-                    trial_locs_idx = trial_locs_idx - 1;
+if size(trial_locs,1) ~= size(file_save_time,1) % && size(s_olfactometer.program_1.outcome_by_trial,1) ~= size(file_save_time,1)   
+    if ignoreFirstTrials == 1
+        % deal with 2AFC recordings without buffer programs, in which the first
+        % trial of each program is not acquired. I had to implement
+        % this because the method of matching trials to acqs based
+        % on the timing failed - for whatever reason, the last acqs
+        % of each block are saved after a larger delay compared to
+        % the other inter-acq interval, so the method of going from
+        % the last trial to the first fails.
+        disp('you are ignoring first trials. make sure you have 6 programs, 130 trials and 126 acquisitions')
+        disp(strcat("you have ", num2str(programNum), " programs"))
+        disp(strcat("you have ", num2str(size(trial_locs,1)), " trials"))
+        disp(strcat("you have ", num2str(size(file_save_time,1)), " acqs"))
+        % iterate from 1st to last program
+        for programNum = 1:size(programFieldNames,1)
+            programFieldName = programFieldNames(programNum);
+            trialNum_total = size(s_olfactometer.(programFieldName).startMin_by_trial,1);
+            if trialNum_total > 0  
+                if s_olfactometer.(programFieldName).type == "ignore"                  
+                    % throw away the first acqs
+                    % ASSUMPTION: all warm-up trials were acquired
+                    acq_list_subset = acq_list_subset(trialNum_total+1:end);
+                    acq_idx_subset = acq_idx_subset(trialNum_total+1:end);
                 else
-                    s_olfactometer.(programFieldName).summary_by_trial.acqNum(trialNum) = str2double(acq_list(acq_idx));
-                    s_olfactometer.(programFieldName).summary_by_trial.acqIdx(trialNum) = acq_idx;
-                    trial_locs_idx = trial_locs_idx - 1;
-                    acq_idx = acq_idx - 1;
+                    % add a column pre-allocated with NaN where acq # per trial will go
+                    s_olfactometer.(programFieldName).summary_by_trial = addvars(s_olfactometer.(programFieldName).summary_by_trial,NaN(trialNum_total,1),'NewVariableName','acqNum');
+                    s_olfactometer.(programFieldName).summary_by_trial = addvars(s_olfactometer.(programFieldName).summary_by_trial,NaN(trialNum_total,1),'NewVariableName','acqIdx');
+                    % skip first trial and assign acqs nums and idxs from 
+                    % the second to the last trial
+                    s_olfactometer.(programFieldName).summary_by_trial.acqNum(2:end) = str2double(acq_list_subset(1:trialNum_total-1));
+                    s_olfactometer.(programFieldName).summary_by_trial.acqIdx(2:end) = acq_idx_subset(1:trialNum_total-1);
+                    % throw away the assigned acqs nums and idxs
+                    acq_list_subset = acq_list_subset(trialNum_total:end);
+                    acq_idx_subset = acq_idx_subset(trialNum_total:end);
+                end
+            end
+        end
+    else
+        % iterate from last to 1st program
+        for programNum = size(programFieldNames,1):-1:1         
+            programFieldName = programFieldNames(programNum);   
+            if s_olfactometer.(programFieldName).type ~= "ignore" 
+                trialNum_total = size(s_olfactometer.(programFieldName).startMin_by_trial,1);
+                % add a column pre-allocated with NaN where acq # per trial will go
+                s_olfactometer.(programFieldName).summary_by_trial = addvars(s_olfactometer.(programFieldName).summary_by_trial,NaN(trialNum_total,1),'NewVariableName','acqNum');
+                s_olfactometer.(programFieldName).summary_by_trial = addvars(s_olfactometer.(programFieldName).summary_by_trial,NaN(trialNum_total,1),'NewVariableName','acqIdx');
+                for trialNum = trialNum_total:-1:1
+                    if abs(trial_locs(trial_locs_idx) - adjusted_file_save_time(acq_idx)) > tolerance
+                    % if round(trial_locs(trial_locs_idx),1) ~= round(adjusted_file_save_time(acq_idx),1) % this method failed
+                        disp('oops we have trials without acq')
+                        trial_locs_idx = trial_locs_idx - 1;
+                    else
+                        s_olfactometer.(programFieldName).summary_by_trial.acqNum(trialNum) = str2double(acq_list(acq_idx));
+                        s_olfactometer.(programFieldName).summary_by_trial.acqIdx(trialNum) = acq_idx;
+                        trial_locs_idx = trial_locs_idx - 1;
+                        acq_idx = acq_idx - 1;
+                    end
                 end
             end
         end
@@ -602,6 +646,9 @@ end
 
 % test if you missed the first trial peak, causing the size of odor_locs to
 % be larger than the size of trial_locs
+size(trial_locs,1)
+size(odor_locs,1)
+size(odor_end_locs,1)
 if size(trial_locs,1) < size(odor_locs,1)
     % drop off the first odor_locs and the first odor_end_locs
     odor_locs = odor_locs(2:end);
