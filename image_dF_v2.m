@@ -8,7 +8,7 @@
 %% USER INPUT
 
 % Put NaN for automatic limits
-absoluteLimit = 1;
+absoluteLimit = 1; 
 
 % Define percentiles
 % LOWER_QUANTILE = 0.0001;
@@ -307,3 +307,21 @@ for iFigure = 1:length(figures)
 
     drawnow;
 end
+
+
+%% Save figs
+
+FigList = findobj(allchild(0), 'flat', 'Type', 'figure');
+
+% save all open figs
+for iFig = 1:length(FigList)
+  FigHandle = FigList(iFig);
+  FigName = FigList(iFig).Name;
+  set(0, 'CurrentFigure', FigHandle);
+  % forces matlab to save fig as a vector
+  FigHandle.Renderer = 'painters';  
+  % actually saves a vector file
+  saveas(FigHandle,fullfile(saveDir, [FigName '.svg']));
+end 
+disp('saved all figs')
+close all
