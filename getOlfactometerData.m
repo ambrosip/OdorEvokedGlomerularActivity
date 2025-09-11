@@ -227,6 +227,8 @@ if olfactory_task == "passive_odor_presentations"
                 s_olfactometer.(programFieldName).odor_start_ts_labeled(:,2),...
                 s_olfactometer.(programFieldName).outcome_by_trial(1:end-1),...
                 'VariableNames',{'min','odor','outcome'});
+
+            s_olfactometer.(programFieldName).startMin_by_trial = s_olfactometer.(programFieldName).startMin_by_trial(1:end-1);
         end
         
         % add to the number of trials I expect to analyze for this

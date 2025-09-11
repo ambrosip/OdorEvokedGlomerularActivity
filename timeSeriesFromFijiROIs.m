@@ -193,12 +193,12 @@ xmax = round(max(xAxisInSec),TieBreaker='plusinf');
 
 % adjust ymin to -1 in case it's zero
 if ymin == 0
-   ymin = -1;
+   ymin = -0.1;
 end
 
 % adjust max to +1 in case it's zero
 if ymax == 0
-   ymax = 1;
+   ymax = 0.1;
 end
 
 % get max number of odors used in this experiment

@@ -113,30 +113,28 @@ else
             s_olfactometer.(programFieldName).summary_by_trial = addvars(s_olfactometer.(programFieldName).summary_by_trial,NaN(trialNum_total,1),'NewVariableName','trial_locs_min');
             s_olfactometer.(programFieldName).summary_by_trial = addvars(s_olfactometer.(programFieldName).summary_by_trial,NaN(trialNum_total,1),'NewVariableName','odor_locs_min');
             
-            % if ignoreLastTrial == 1 % I'm not sure if this is still needed
-            %     % had to add "if" statement here to handle case when the scope
-            %     % loop was aborted mid-acquisition
-            %     trialNum_total = trialNum_total - 1;
-            % end
+            if ignoreLastTrial == 1 
+                % had to add "if" statement here to handle case when the scope
+                % loop was aborted mid-acquisition or when the scope loop
+                % ended just before the olfactometer did, which is the case
+                % for 20250303_m0041_th-gcamp e1
+                trialNum_total = trialNum_total - 1;
+            end
             
             % iterate from last to 1st trial
             for trialNum = trialNum_total:-1:1 
 
-                % if acq_idx > 0 % I'm not sure if this is still needed
-                %     % had to add "if" statement here to handle the case when
-                %     % the scope loop started after the olfactometer, causing
-                %     % the scope to miss the first trial
-                %     s_olfactometer.(programFieldName).summary_by_trial.acqNum(trialNum) = str2double(acq_list(acq_idx));
-                %     s_olfactometer.(programFieldName).summary_by_trial.acqIdx(trialNum) = acq_idx;
-                %     acq_idx = acq_idx - 1;
-                % end
-
-                s_olfactometer.(programFieldName).summary_by_trial.acqNum(trialNum) = str2double(acq_list(acq_idx));
-                s_olfactometer.(programFieldName).summary_by_trial.acqIdx(trialNum) = acq_idx;
-                s_olfactometer.(programFieldName).summary_by_trial.trial_locs_min(trialNum) = trial_locs(trial_locs_idx);
-                s_olfactometer.(programFieldName).summary_by_trial.odor_locs_min(trialNum) = odor_locs(trial_locs_idx);
-                acq_idx = acq_idx - 1;
-                trial_locs_idx = trial_locs_idx - 1;
+                if acq_idx > 0 
+                    % had to add "if" statement here to handle the case when
+                    % the scope loop started after the olfactometer, causing
+                    % the scope to miss the first trial
+                    s_olfactometer.(programFieldName).summary_by_trial.acqNum(trialNum) = str2double(acq_list(acq_idx));
+                    s_olfactometer.(programFieldName).summary_by_trial.acqIdx(trialNum) = acq_idx;
+                    s_olfactometer.(programFieldName).summary_by_trial.trial_locs_min(trialNum) = trial_locs(trial_locs_idx);
+                    s_olfactometer.(programFieldName).summary_by_trial.odor_locs_min(trialNum) = odor_locs(trial_locs_idx);
+                    acq_idx = acq_idx - 1;
+                    trial_locs_idx = trial_locs_idx - 1;
+                end
             end
         end
     end

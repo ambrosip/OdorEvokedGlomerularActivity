@@ -8,7 +8,7 @@
 %% USER INPUT
 
 % Put NaN for automatic limits
-absoluteLimit = 1; 
+absoluteLimit = NaN; 
 
 % Define percentiles
 % LOWER_QUANTILE = 0.0001;
@@ -273,20 +273,25 @@ for iFigure = 1:length(figures)
         nexttile
         imshow(figures(iFigure).hit.image, plotRange)
         title('Hits', 'FontSize', 16)
+        addScaleBar
 
         nexttile
         imshow(figures(iFigure).false.image, plotRange)
         title('False Choices', 'FontSize', 16)
+        addScaleBar
 
         nexttile
         imshow(figures(iFigure).miss.image, plotRange)
         title('Misses', 'FontSize', 16)
+        addScaleBar
     else
         nPlots = 1;
 
         nexttile
         imshow(figures(iFigure).na.image, plotRange)
         title('NA', 'FontSize', 16)
+        addScaleBar    
+
     end
 
     baseSize = 600;
@@ -325,3 +330,11 @@ for iFig = 1:length(FigList)
 end 
 disp('saved all figs')
 close all
+
+
+%% Save workspace
+
+% save workspace variables
+matFileName = strcat(imgsToAnalyzeNames{1}(1:end-9),'_',imgsToAnalyzeNames{end}(end-13:end-4),'_preProcessing');
+save(fullfile(saveDir,matFileName));     
+disp('saved mat file')
