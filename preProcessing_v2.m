@@ -1,7 +1,7 @@
 %% USER INPUT - experiment directory and others - EDIT ME
 
 % experiment dir to be analyzed
-expDir = '/Users/priscilla/Documents/Local - Moss Lab/20250902/e3';
+expDir = '/Users/priscilla/Documents/Local - Moss Lab/20250903/e2';
 
 % set img-specific inputs
 photobleaching_window_s = 2; % duration of data in senconds that will be removed from baseline to account for photobleaching
@@ -22,7 +22,7 @@ odor_dur_h5 = '/OdorDelivery';
 
 % set program type x odor x action x outcome relationships
 olfactory_task = "2afc_fine_coarse_fine";
-olfactory_task = "passive_odor_presentations";
+% olfactory_task = "passive_odor_presentations";
 minLicksToTriggerReward = 3;
 
 % set max time interval (in min) between file acq time and trial onset 

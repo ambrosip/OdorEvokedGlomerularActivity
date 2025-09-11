@@ -82,7 +82,15 @@ for file = 1:imgsToAnalyze_numberOf
     
     % iterate frame by frame (each frame is a time point)
     for frame = 1:frames_per_img
+
+        % read img as int16 (range: -32768 to 32767)
         imgToAnalyze = imread(imgToAnalyzeFileDir,frame);
+
+        % convert img to uint16 (range: 0 to 65535)
+        imgToAnalyze = im2uint16(imgToAnalyze);
+
+        % convert img to single
+        imgToAnalyze = single(imgToAnalyze);
     
         % iterate ROI by ROI
         for roiNumber = 1:rois_numberOf
@@ -90,8 +98,10 @@ for file = 1:imgsToAnalyze_numberOf
             labeledRoi = labeledRoi';
             % figure; imshow(labeledRoi) % use this to troubleshoot 
             nPixelsInRoi = sum(labeledRoi,'all');
-            labeledRoiAsInt16 = int16(labeledRoi);
-            maskedImg = labeledRoiAsInt16.*imgToAnalyze;
+            % labeledRoiAsInt16 = int16(labeledRoi);
+            labeledRoiAsSingle = single(labeledRoi);
+            % maskedImg = labeledRoiAsInt16.*imgToAnalyze;
+            maskedImg = labeledRoiAsSingle.*imgToAnalyze;
             % figure; imshow(imadjust(maskedImg,[0.5 0.65])) % use this to troubleshoot 
             % it is safe to sum uint16 variables: https://www.mathworks.com/matlabcentral/answers/5401-matlab-function-mean-returns-the-exact-same-value-for-uint16-and-double-values-not-for-single
             meanIntInRoi = sum(maskedImg,'all')/nPixelsInRoi;
