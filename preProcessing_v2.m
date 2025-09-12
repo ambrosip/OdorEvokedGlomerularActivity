@@ -1,3 +1,6 @@
+clear all
+close all
+
 %% USER INPUT - experiment directory and others - EDIT ME
 
 % experiment dir to be analyzed
