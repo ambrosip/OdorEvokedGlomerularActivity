@@ -25,8 +25,8 @@ max_df_color = [103 0 31] / 255;
 min_df_color = [5 48 97] / 255;
 
 % Plot one figure for each program and odor combination or plot only hits
-% for all programs and odors in a single figure?
-plotOnlyHits = true;
+% (or only nas) for all programs and odors in a single figure?
+plotTogether = true;
 
 %% Extra inputs in case you run this before timeSeriesFromFijiROIs
 
@@ -187,10 +187,14 @@ for program_name = string(fieldnames(s_olfactometer))'
         end
 
         for outcome = ["hit" "miss" "false" "na"]
+            if figures(iFigure).(outcome).total == 0
+                continue
+            end
+            
             figures(iFigure).(outcome).image = ...
                 (figures(iFigure).(outcome).image - ...
                 mean(figures(iFigure).(outcome).image(:))) / ...
-                std(figures(iFigure).(outcome).image(:));
+                std(figures(iFigure).(outcome).image(:));                
         end
 
         % Don't compute the ratio if there are no acquisition files
@@ -255,7 +259,7 @@ end
 % The same range will be used for all figures, for easy comparisons.
 plotRange = [-absoluteLimit absoluteLimit];
 
-if plotOnlyHits
+if plotTogether
     % Get figure name
     % Get the start of firstAcqName (before the third underline)
     figNameStart = split(string(firstAcqName), '_');
@@ -266,7 +270,13 @@ if plotOnlyHits
     figNameEnd = figNameEnd(end-1);
 
     % Join results in the correct format
-    figName = sprintf("%s_to_%s_hits", figNameStart, figNameEnd);
+    % If there are any NAs, plot NAs. Otherwise, plot hits.
+    plotNAs = figures(1).na.total > 0;
+    if plotNAs > 0
+        figName = sprintf("%s_to_%s_na", figNameStart, figNameEnd);
+    else
+        figName = sprintf("%s_to_%s_hits", figNameStart, figNameEnd);
+    end
 
     fig = figure('Name', figName);
 
@@ -301,7 +311,12 @@ if plotOnlyHits
         col = find(strcmp(programTypes, figures(iFigure).type));
 
         nexttile((row - 1) * length(programTypes) + col)
-        imshow(figures(iFigure).hit.image, plotRange);
+        
+        if plotNAs > 0
+            imshow(figures(iFigure).na.image, plotRange);
+        else
+            imshow(figures(iFigure).hit.image, plotRange);
+        end
     end
 
     % Create column labels
@@ -319,7 +334,8 @@ if plotOnlyHits
         ylabel(label, 'FontSize', 12);
     end
 
-    fig.Position = [200 100 frameSize(2)/2.5 * length(programTypes) + 50 frameSize(1)/2.5 * length(odors) + 50];
+    fig.Position = [200 100 frameSize(2)/2.5 * length(programTypes) + 50 ...
+        frameSize(1)/2.5 * length(odors) + 50];
 
     % Uses the colormap created at the start
     cb = colorbar;
@@ -426,5 +442,5 @@ close all
 
 % save workspace variables
 matFileName = strcat(imgsToAnalyzeNames{1}(1:end-9),'_',imgsToAnalyzeNames{end}(end-13:end-4),'_preProcessing');
-save(fullfile(saveDir,matFileName));     
+save(fullfile(saveDir,matFileName));
 disp('saved mat file')
