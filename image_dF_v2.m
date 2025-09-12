@@ -26,7 +26,7 @@ min_df_color = [5 48 97] / 255;
 
 % Plot one figure for each program and odor combination or plot only hits
 % for all programs and odors in a single figure?
-plotOnlyHits = true;
+plotOnlyHits = false;
 
 %% Extra inputs in case you run this before timeSeriesFromFijiROIs
 
@@ -312,6 +312,8 @@ if plotOnlyHits
         ylabel(label, 'FontSize', 12);
     end
 
+    fig.Position = [200 100 frameSize(2)/2.5 * length(programTypes) frameSize(1)/2.5 * length(odors) + 50];
+
     % Uses the colormap created at the start
     cb = colorbar;
     cb.Layout.Tile = 'south';
@@ -322,7 +324,7 @@ if plotOnlyHits
     ylabel(cb, 'dF/F', 'FontSize', 12);
 
     tl.TileSpacing = 'tight';
-    tl.Padding = 'compact';
+    tl.Padding = 'tight';
 
     drawnow;
 
