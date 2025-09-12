@@ -8,7 +8,7 @@
 %% USER INPUT
 
 % Put NaN for automatic limits
-absoluteLimit = NaN; 
+absoluteLimit = NaN;
 
 % Define percentiles
 % LOWER_QUANTILE = 0.0001;
@@ -23,6 +23,10 @@ UPPER_QUANTILE = 0.99;
 % Define the colors
 max_df_color = [103 0 31] / 255;
 min_df_color = [5 48 97] / 255;
+
+% Plot one figure for each program and odor combination or plot only hits
+% for all programs and odors in a single figure?
+plotOnlyHits = true;
 
 %% Extra inputs in case you run this before timeSeriesFromFijiROIs
 
@@ -103,7 +107,7 @@ for program_name = string(fieldnames(s_olfactometer))'
         % Add one figure to the figure list and record its program type,
         % odor number, and number of acquisitions
         iFigure = iFigure + 1;
-        
+
         figures(iFigure).type = programType;
         figures(iFigure).odor = odor;
         figures(iFigure).acquisitions = 0;
@@ -143,11 +147,11 @@ for program_name = string(fieldnames(s_olfactometer))'
             end
 
             % Load and computes the mean of the relevant frames
-            
+
             % Note that since read_file returns a matrix of integers from
             % [-32768, 32767] we need to add 32768 to that matrix to shift its
             % values to the [0, 65535] range.
-            
+
             % Load frames for the baseline window
             frames = single(read_file( ...
                 filepath, frameBaselineStart, frameOdorDuration)) + 32768;
@@ -160,7 +164,7 @@ for program_name = string(fieldnames(s_olfactometer))'
 
             signalBaselineRatio = ...
                 (signalImage - baselineImage) ./ baselineImage;
-            
+
             % outcome is the first word of the outcome name
             % Possibilities are "hit", "miss", "false", and "na".
             outcome = split(odorTable{row, 'outcome'});
@@ -212,7 +216,7 @@ if isnan(absoluteLimit)
     % Initiliaze limits
     lowerLimit = NaN;
     upperLimit = NaN;
-    
+
     % Compute limits figure by figure. The number lowerLimit will be the
     % smallest of all the 5% quantiles and upperLimit will be the largest of
     % all the 95% quantiles (if LOWER_QUANTILE is set to 0.05 and
@@ -224,18 +228,18 @@ if isnan(absoluteLimit)
             quantile(figures(i).miss.image(:), LOWER_QUANTILE), ...
             quantile(figures(i).false.image(:), LOWER_QUANTILE), ...
             quantile(figures(i).na.image(:), LOWER_QUANTILE) ...
-        ]);
-    
+            ]);
+
         upperLimit = max([ ...
             upperLimit, ...
             quantile(figures(i).hit.image(:), UPPER_QUANTILE), ...
             quantile(figures(i).miss.image(:), UPPER_QUANTILE), ...
             quantile(figures(i).false.image(:), UPPER_QUANTILE), ...
             quantile(figures(i).na.image(:), UPPER_QUANTILE) ...
-        ]);
+            ]);
     end
 
-    % Take the limit that is larger in absolute value. It also turns it 
+    % Take the limit that is larger in absolute value. It also turns it
     % into a double because that is a requirement for plots.
     absoluteLimit = double(max(abs(upperLimit), abs(lowerLimit)));
 end
@@ -244,58 +248,69 @@ end
 % The same range will be used for all figures, for easy comparisons.
 plotRange = [-absoluteLimit absoluteLimit];
 
-for iFigure = 1:length(figures)
+if plotOnlyHits
     % Get figure name
     % Get the start of firstAcqName (before the third underline)
     figNameStart = split(string(firstAcqName), '_');
     figNameStart = join(figNameStart(1:end-1), '_');
 
     % Get the number of the last acquisition
-    figNameMiddle = split(string(lastAcqName), '_');
-    figNameMiddle = figNameMiddle(end-1);
-
-    % Reformats program type string from "Fine 1" to "fine_1", for example
-    figNameEnd = join(split(lower(figures(iFigure).type)), '_');
+    figNameEnd = split(string(lastAcqName), '_');
+    figNameEnd = figNameEnd(end-1);
 
     % Join results in the correct format
-    figName = sprintf("%s_to_%s_odor_%d_%s", figNameStart, ...
-        figNameMiddle, figures(iFigure).odor, figNameEnd);
+    figName = sprintf("%s_to_%s", figNameStart, figNameEnd);
 
     fig = figure('Name', figName);
 
-    % 3 possible outcomes in a row (or just 1 if there is NA)
-    tl = tiledlayout('horizontal');
-    title(tl, figName, 'Interpreter', 'none');
+    % Get the number of unique programs and odors
+    programTypes = unique([figures.type], 'stable');
+    odors = unique([figures.odor]);
 
-    if figures(iFigure).na.total == 0
-        nPlots = 3;
+    tl = tiledlayout(length(odors), length(programTypes));
+    title(tl, figName, 'Interpreter', 'none', 'FontSize', 16);
 
-        nexttile
-        imshow(figures(iFigure).hit.image, plotRange)
-        title('Hits', 'FontSize', 16)
-        addScaleBar
+    % Add blank images for pairs of program and odor that don't have a
+    % corresponding figure. This is needed to make sure column and row labels
+    % appear in the final figure.
+    for row = 1:length(odors)
+        for col = 1:length(programTypes)
+            % Check if there is a figure for this program and odor
+            rows = [figures.odor] == odors(row);
+            cols = strcmp([figures.type], programTypes(col));
 
-        nexttile
-        imshow(figures(iFigure).false.image, plotRange)
-        title('False Choices', 'FontSize', 16)
-        addScaleBar
-
-        nexttile
-        imshow(figures(iFigure).miss.image, plotRange)
-        title('Misses', 'FontSize', 16)
-        addScaleBar
-    else
-        nPlots = 1;
-
-        nexttile
-        imshow(figures(iFigure).na.image, plotRange)
-        title('NA', 'FontSize', 16)
-        addScaleBar    
-
+            if sum(rows & cols) == 0
+                % If there is no figure, add a blank image
+                nexttile((row - 1) * length(programTypes) + col)
+                imshow(blankImage, plotRange);
+            end
+        end
     end
 
-    baseSize = 600;
-    fig.Position = [200 100 baseSize * nPlots baseSize + 150];
+    % Plot all figures
+    for iFigure = 1:length(figures)
+        % Get the row and column of the current figure
+        row = find(odors == figures(iFigure).odor);
+        col = find(strcmp(programTypes, figures(iFigure).type));
+
+        nexttile((row - 1) * length(programTypes) + col)
+        imshow(figures(iFigure).hit.image, plotRange);
+    end
+
+    % Create column labels
+    for column = 1:length(programTypes)
+        ax = nexttile(column);
+        ax.XAxisLocation = 'top';
+        xlabel(programTypes(column), 'FontSize', 12);
+    end
+
+    % Create row labels
+    for row = 1:length(odors)
+        ax = nexttile((row - 1) * length(programTypes) + 1);
+        ax.YAxisLocation = 'left';
+        label = sprintf('Odor %d', odors(row));
+        ylabel(label, 'FontSize', 12);
+    end
 
     % Uses the colormap created at the start
     cb = colorbar;
@@ -304,13 +319,77 @@ for iFigure = 1:length(figures)
     colormap(divergingGradient);
     clim(plotRange);
 
-    % ylabel(cb, '$dF/F$', 'interpreter', 'latex', 'FontSize', 16);
-    ylabel(cb, 'dF/F', 'FontSize', 16);
+    ylabel(cb, 'dF/F', 'FontSize', 12);
 
-    tl.TileSpacing = 'compact';
+    tl.TileSpacing = 'tight';
     tl.Padding = 'compact';
 
     drawnow;
+
+else
+    for iFigure = 1:length(figures)
+        % Get figure name
+        % Get the start of firstAcqName (before the third underline)
+        figNameStart = split(string(firstAcqName), '_');
+        figNameStart = join(figNameStart(1:end-1), '_');
+
+        % Get the number of the last acquisition
+        figNameMiddle = split(string(lastAcqName), '_');
+        figNameMiddle = figNameMiddle(end-1);
+
+        % Reformats program type string from "Fine 1" to "fine_1", for example
+        figNameEnd = join(split(lower(figures(iFigure).type)), '_');
+
+        % Join results in the correct format
+        figName = sprintf("%s_to_%s_odor_%d_%s", figNameStart, ...
+            figNameMiddle, figures(iFigure).odor, figNameEnd);
+
+        fig = figure('Name', figName);
+
+        % 3 possible outcomes in a row (or just 1 if there is NA)
+        tl = tiledlayout('horizontal');
+        title(tl, figName, 'Interpreter', 'none');
+
+        if figures(iFigure).na.total == 0
+            nPlots = 3;
+
+            nexttile
+            imshow(figures(iFigure).hit.image, plotRange)
+            title('Hits', 'FontSize', 16)
+
+            nexttile
+            imshow(figures(iFigure).false.image, plotRange)
+            title('False Choices', 'FontSize', 16)
+
+            nexttile
+            imshow(figures(iFigure).miss.image, plotRange)
+            title('Misses', 'FontSize', 16)
+        else
+            nPlots = 1;
+
+            nexttile
+            imshow(figures(iFigure).na.image, plotRange)
+            title('NA', 'FontSize', 16)
+        end
+
+        baseSize = 600;
+        fig.Position = [200 100 baseSize * nPlots baseSize + 150];
+
+        % Uses the colormap created at the start
+        cb = colorbar;
+        cb.Layout.Tile = 'south';
+
+        colormap(divergingGradient);
+        clim(plotRange);
+
+        % ylabel(cb, '$dF/F$', 'interpreter', 'latex', 'FontSize', 16);
+        ylabel(cb, 'dF/F', 'FontSize', 16);
+
+        tl.TileSpacing = 'compact';
+        tl.Padding = 'compact';
+
+        drawnow;
+    end
 end
 
 
@@ -320,14 +399,14 @@ FigList = findobj(allchild(0), 'flat', 'Type', 'figure');
 
 % save all open figs
 for iFig = 1:length(FigList)
-  FigHandle = FigList(iFig);
-  FigName = FigList(iFig).Name;
-  set(0, 'CurrentFigure', FigHandle);
-  % forces matlab to save fig as a vector
-  FigHandle.Renderer = 'painters';  
-  % actually saves a vector file
-  saveas(FigHandle,fullfile(saveDir, [FigName '.svg']));
-end 
+    FigHandle = FigList(iFig);
+    FigName = FigList(iFig).Name;
+    set(0, 'CurrentFigure', FigHandle);
+    % forces matlab to save fig as a vector
+    FigHandle.Renderer = 'painters';
+    % actually saves a vector file
+    saveas(FigHandle, fullfile(saveDir, [FigName '.svg']));
+end
 disp('saved all figs')
 close all
 
