@@ -190,11 +190,11 @@ for program_name = string(fieldnames(s_olfactometer))'
             if figures(iFigure).(outcome).total == 0
                 continue
             end
-            
+
             figures(iFigure).(outcome).image = ...
                 (figures(iFigure).(outcome).image - ...
                 mean(figures(iFigure).(outcome).image(:))) / ...
-                std(figures(iFigure).(outcome).image(:));                
+                std(figures(iFigure).(outcome).image(:));
         end
 
         % Don't compute the ratio if there are no acquisition files
@@ -311,12 +311,23 @@ if plotTogether
         col = find(strcmp(programTypes, figures(iFigure).type));
 
         nexttile((row - 1) * length(programTypes) + col)
-        
+
+        % Compares distances with the first figure in the column
+        % That means first odor and same type as current plot
+        comparisonIdx = find([figures.odor] == odors(1) & ...
+            strcmp([figures.type], figures(iFigure).type));
+
         if plotNAs > 0
             imshow(figures(iFigure).na.image, plotRange);
+            d = imageDistance(figures(iFigure).na, figures(comparisonIdx).na);
         else
             imshow(figures(iFigure).hit.image, plotRange);
+            d = imageDistance(figures(iFigure).hit, figures(comparisonIdx).hit);
         end
+
+        [h w] = size(figures(1).hit.image);
+        text(w/2, h + 20, string(d), 'FontSize', 12, ...
+            'HorizontalAlignment', 'center');
     end
 
     % Create column labels
@@ -334,8 +345,8 @@ if plotTogether
         ylabel(label, 'FontSize', 12);
     end
 
-    fig.Position = [200 100 frameSize(2)/2.5 * length(programTypes) + 50 ...
-        frameSize(1)/2.5 * length(odors) + 50];
+    fig.Position = [200 150 frameSize(2)/3 * length(programTypes) + 50 ...
+        frameSize(1)/3 * length(odors) + 150];
 
     % Uses the colormap created at the start
     cb = colorbar;
