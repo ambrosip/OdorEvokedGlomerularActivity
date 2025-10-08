@@ -4,7 +4,7 @@ close all
 %% USER INPUT - experiment directory and others - EDIT ME
 
 % experiment dir to be analyzed
-expDir = '/Users/priscilla/Documents/Local - Moss Lab/20250910/sid169';
+expDir = 'M:\ImagingData\20251002\sid291\e2';
 
 % variables made to deal with problem files
 ignoreLastTrial = 0;
@@ -28,7 +28,7 @@ odor_dur_h5 = '/OdorDelivery';
 
 % set program type x odor x action x outcome relationships
 olfactory_task = "2afc_fine_coarse_fine";
-% olfactory_task = "passive_odor_presentations";
+olfactory_task = "passive_odor_presentations";
 minLicksToTriggerReward = 3;
 
 % set max time interval (in min) between file acq time and trial onset 
@@ -48,8 +48,8 @@ vermillion_color = [213 94 0]/255;
 reddish_purple_color = [204 121 167]/255;
 
 % odor color-coding
-odor_ids = [1; 2; 17; 18; 19; 20];
-color_ids = [black_color; reddish_purple_color; blue_color; sky_blue_color; vermillion_color; orange_color];
+odor_ids = [1; 2; 17; 18; 19; 20; 21; 22; 23; 24];
+color_ids = [black_color; reddish_purple_color; blue_color; sky_blue_color; vermillion_color; orange_color; blue_color; sky_blue_color; vermillion_color; orange_color];
 odor_color = table(odor_ids,color_ids,'VariableNames',{'odorID','colorID'});
 
 disp('loaded inputs')

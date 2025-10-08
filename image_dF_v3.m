@@ -26,7 +26,7 @@ min_df_color = [5 48 97] / 255;
 
 % Plot one figure for each program and odor combination or plot only hits
 % (or only nas) for all programs and odors in a single figure?
-plotTogether = true;
+plotTogether = false;
 
 %% Extra inputs in case you run this before timeSeriesFromFijiROIs
 

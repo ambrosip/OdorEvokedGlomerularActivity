@@ -20,7 +20,9 @@ x_minutes_h5 = x_data_points_h5/samplerate/60;
     % code found 2 odor_locs right next to each other
 
 % find offset of odor TTL pulse
-[odor_end_pks,odor_end_locs]=findpeaks(-diff(odor_TTL),'MinPeakHeight',2);
+[odor_end_pks,odor_end_locs]=findpeaks(-diff(odor_TTL),'MinPeakHeight',2,'MinPeakDistance',samplerate/10);
+    % added MinPeakDistance of 100 ms to deal with problematic file where
+    % code found 2 odor_end_locs right next to each other
 
 % adjust timing of locs (to account for diff function used to find peaks)
 trial_locs = trial_locs + 1;
