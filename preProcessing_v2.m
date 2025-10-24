@@ -4,7 +4,7 @@ close all
 %% USER INPUT - experiment directory and others - EDIT ME
 
 % experiment dir to be analyzed
-expDir = 'M:\ImagingData\20251007\sid260\e1';
+expDir = '/Volumes/T7 Shield/From Server/20250822/M174/e1';
 
 % variables made to deal with problem files
 ignoreLastTrial = 0;
