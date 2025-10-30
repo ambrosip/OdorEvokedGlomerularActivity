@@ -8,7 +8,7 @@
 %% USER INPUT
 
 % Seconds after odor onset
-post_odor_interval = 1;
+post_odor_interval = 2;
 
 % Basline right before analysis window (baseline_pre_odor = false) 
 % or right before odor presentation (baseline_pre_odor = true)

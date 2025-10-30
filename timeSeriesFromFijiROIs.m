@@ -22,6 +22,8 @@ TO DO:
     re-calculate mean_dF
 %}
 
+convertFrom32bit = true;
+
 
 %% Get dir of fiji files 
 
@@ -85,6 +87,11 @@ for file = 1:imgsToAnalyze_numberOf
 
         % read img as int16 (range: -32768 to 32767)
         imgToAnalyze = imread(imgToAnalyzeFileDir,frame);
+
+        % deal with 32-bit files
+        if convertFrom32bit
+            imgToAnalyze = cast(imgToAnalyze, 'uint16');
+        end
 
         % convert img to uint16 (range: 0 to 65535)
         imgToAnalyze = im2uint16(imgToAnalyze);
@@ -261,7 +268,12 @@ for roi=1:rois_numberOf
     end
     % show ROI location
     nexttile(columns,[max_odor_num,1])
-    imshow(imadjust(zProjFileToAnalyze,[0.5 0.65])) 
+    if convertFrom32bit
+        zProjFileToAnalyze = cast(zProjFileToAnalyze,'uint16');
+        imshow(imadjust(zProjFileToAnalyze))
+    else
+        imshow(imadjust(zProjFileToAnalyze,[0.5 0.65])) 
+    end    
     hold on
     thetas = linspace(0,2*pi,200);
     ellipseR1 = (rois{roi}.vnRectBounds(4) - rois{roi}.vnRectBounds(2))/2;
