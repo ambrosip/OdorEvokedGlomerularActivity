@@ -4,7 +4,8 @@ close all
 
 %% USER INPUT
 
-mainDir = '/Users/priscilla/OHSU Dropbox/Priscilla Ambrosi/Dropbox - Moss Lab/Lab - Behavior/m291/2025_10_29-11_50_02';
+mainDir = 'C:\Users\ambrosi\OHSU Dropbox\Priscilla Ambrosi\Dropbox - Moss Lab\Lab - Behavior\m291\2025_10_31-16_00_09';
+plot_subset = true;
 first_session = 1;
 last_session = 8;
 
@@ -37,6 +38,17 @@ for sheetNum = 1:length(sheets)
     if sheets(sheetNum)=='Results'
         data = readtable(dataToAnalyze,'Sheet','Results');
     end
+end
+
+% check if user wants a subset of sessions or not
+if plot_subset == false
+    last_session = data.session(end);
+end
+
+% check if user-defined subset of sessions is valid
+if last_session > data.session(end)
+    last_session = data.session(end);
+    disp('WARNING: not enough sessions')
 end
 
 % Get performance data
