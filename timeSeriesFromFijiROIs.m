@@ -22,6 +22,7 @@ TO DO:
     re-calculate mean_dF
 %}
 
+tic
 convertFrom32bit = true;
 
 
@@ -85,17 +86,41 @@ for file = 1:imgsToAnalyze_numberOf
     % iterate frame by frame (each frame is a time point)
     for frame = 1:frames_per_img
 
-        % read img as int16 (range: -32768 to 32767)
+        % Read img frame by frame
+        % Raw files from scanimage and mcor files from the matlab motion
+        % correction script are stored as int16 (signed 16-bit integer,
+        % with values ranging from -32768 to 32767). To avoid errors with
+        % dF/F calculation due to negative values, I used to convert these
+        % files to uint16 (unsigned 16-bit integer, with values ranging
+        % from 0 to 65535). To allow further processing, I then converted
+        % the numbers to single (similar to double, but with less precision). 
+        % Mcor files from the python script are stored as int32 (signed
+        % 32-bit integer, with values ranging from -2,147,483,648 to
+        % 2,147,483,647), but the actual range of the data is just a bit
+        % wider than the int16 range. To deal with all of these files
+        % without improperly compressing the data (e.g. the function cast
+        % does NOT work properly to convert int32 to uint16), I decided to
+        % simply shift the dataset to the right by subtracting the min
+        % value if it's below zero. If the min value is above zero, we do
+        % nothing, because we don't have negative values to worry about. In
+        % sum, regardless of bit depth, we will make sure that the lower 
+        % range of values is >= zero. FYI, imread saves data as double.
         imgToAnalyze = imread(imgToAnalyzeFileDir,frame);
 
-        % deal with 32-bit files
-        if convertFrom32bit
-            imgToAnalyze = cast(imgToAnalyze, 'uint16');
+        % Make sure that all entries of imgToAnalize are >= zero
+        if min(imgToAnalyze, [], 'all') < 0
+            imgToAnalyze = imgToAnalyze - min(imgToAnalyze, [], 'all');
         end
 
-        % convert img to uint16 (range: 0 to 65535)
-        imgToAnalyze = im2uint16(imgToAnalyze);
-
+        % % old code, kept for archiving purposes
+        % % deal with 32-bit files - this does NOT WORK - DO NOT USE
+        % if convertFrom32bit
+        %     imgToAnalyze = cast(imgToAnalyze, 'uint16');
+        % end
+        % 
+        % % convert img to uint16 (range: 0 to 65535)
+        % imgToAnalyze = im2uint16(imgToAnalyze);
+        
         % convert img to single
         imgToAnalyze = single(imgToAnalyze);
     
@@ -191,19 +216,23 @@ disp("calculated dF/F")
 %% PLOT data in ROIs organized by odor (rows) and program type (columns)
 
 % get max and min value cof dF/F to set y axis limits
-ymax = round(max(structfun(@(x) max(x,[],'all'),s_dF,'UniformOutput',true)), TieBreaker='plusinf');
-ymin = round(min(structfun(@(x) min(x,[],'all'),s_dF,'UniformOutput',true)), TieBreaker='minusinf');
+% ymax = round(max(structfun(@(x) max(x,[],'all'),s_dF,'UniformOutput',true)), TieBreaker='plusinf');
+% ymin = round(min(structfun(@(x) min(x,[],'all'),s_dF,'UniformOutput',true)), TieBreaker='minusinf');
+
+% Gets the first integer below min and first above max
+ymax = ceil(max(structfun(@(x) max(x,[],'all'),s_dF,'UniformOutput',true)));
+ymin = floor(min(structfun(@(x) min(x,[],'all'),s_dF,'UniformOutput',true)));
 
 % get max and min value of xAxis to set x acis limits
 xmin = round(min(xAxisInSec),TieBreaker='minusinf');
 xmax = round(max(xAxisInSec),TieBreaker='plusinf');
 
-% adjust ymin to -1 in case it's zero
+% adjust ymin to -0.1 in case it's zero
 if ymin == 0
    ymin = -0.1;
 end
 
-% adjust max to +1 in case it's zero
+% adjust max to +0.1 in case it's zero
 if ymax == 0
    ymax = 0.1;
 end
@@ -226,7 +255,7 @@ for roi=1:rois_numberOf
     figName = strcat(firstAcqName(2:end), '_to_', lastAcqName(2:end), '_roi_', num2str(roi), '_dF');
     fig = figure('Name',figName);
     set(gca,'FontName','Arial');
-    set(gcf,'OuterPosition',[100 100 1200 900]); % [left bottom width height]
+    set(gcf,'OuterPosition',[100 100 500 900]); % [left bottom width height]
     set(gca,'LineWidth', 0.75);
     % make a layout with "odor" rows and "program" + 1 columns
     rows = max_odor_num;
@@ -323,6 +352,7 @@ close all
 matFileName = strcat(imgsToAnalyzeNames{1}(1:end-9),'_',imgsToAnalyzeNames{end}(end-13:end-4),'_timeSeriesFromFijiROIs');
 save(fullfile(saveDir,matFileName));     
 disp('I saved the mat file')
+toc
 
 
 %% ARCHIVE
