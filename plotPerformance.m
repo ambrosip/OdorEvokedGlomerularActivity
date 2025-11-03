@@ -4,7 +4,7 @@ close all
 
 %% USER INPUT
 
-mainDir = 'C:\Users\ambrosi\OHSU Dropbox\Priscilla Ambrosi\Dropbox - Moss Lab\Lab - Behavior\m291\2025_10_31-16_00_09';
+mainDir = 'C:\Users\ambrosi\OHSU Dropbox\Priscilla Ambrosi\Dropbox - Moss Lab\Lab - Behavior\m291\2025_11_02-16_45_22';
 plot_subset = true;
 first_session = 1;
 last_session = 8;
@@ -67,7 +67,7 @@ fig = figure('name', strcat(dataName{1}, '_', analysisDate, ' - performance'));
     yline(0.5,'--')
     axis([1 length(first_session:last_session) 0 1])
     yticks([0,1]);
-    xticks([0,length(first_session:last_session)]);
+    xticks([1,length(first_session:last_session)]);
     xlabel('Session');
     ylabel('Events/Trials');
     title([dataName{1}, strcat("analyzed_on_", analysisDate)], 'Interpreter','none');
