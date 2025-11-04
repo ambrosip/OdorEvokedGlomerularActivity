@@ -1,14 +1,12 @@
+clear all
+
 %% USER INPUT
 
-mouseDir = '/Users/priscilla/OHSU Dropbox/Priscilla Ambrosi/Dropbox - Moss Lab/Lab - Behavior/m291';
-% analyzeTodayOnly = True;
-%     dayToAnalyze = ''; % which day (eg 20251001)
-% analyzeAllFromEachDay = True;
-%     programToAnalyze = 1; % which program in chronological order (eg 1, 2...)
+mouseDir = 'C:\Users\ambrosi\OHSU Dropbox\Priscilla Ambrosi\Dropbox - Moss Lab\Lab - Behavior\m237';
 
 % label relevant events from olfactometer program that are not
 % automatically found
-% trial_start_label = "Output 1";
+% trial_start_label = "Output 1"; % works for scope files, but not for lab files
 trial_start_label = "Trial_";
 minLicksToTriggerReward = 3;
 
@@ -45,15 +43,10 @@ disp('got dirs')
 % pre-allocate "programFieldNames": 1 row/program, 1 column
 programFieldNames = strings([size(olfactometer_event_files,1),1]);
 
-% % set variables to 0
-% isFirstFine = 0;
-% isFirstCoarse = 0;
-% trialsToAnalyze = 0;
-% programsToAnalyze = 0;
-
 
 %% Get olfactometer data based on olfactory task type
 
+% set variables to 0
 trialsToAnalyze = 0;
 programsToAnalyze = 0;
 
@@ -131,10 +124,13 @@ for programNum = 1:size(olfactometer_event_files,1)
             % had to add this in the case that the user ends the program
             % after the trial started (and odor was delivered) but before
             % response window started.
-            if trialNum < size(response_window_start_idx,1)         
+            if trialNum <= size(response_window_start_idx,1)         
                 firstIdx_this_trial = response_window_start_idx(trialNum);
                 odorIdx_this_trial = odor_start_idx(trialNum);
-            else 
+            elseif trialNum <= size(odor_start_idx,1)
+                firstIdx_this_trial = size(x_minutes,1);
+                odorIdx_this_trial = odor_start_idx(trialNum);
+            else
                 firstIdx_this_trial = size(x_minutes,1);
                 odorIdx_this_trial = size(x_minutes,1);
             end
@@ -160,16 +156,24 @@ for programNum = 1:size(olfactometer_event_files,1)
                 % action, and outcome is "hit"
                 % ALERT this will errouneously label pavlovian trials as
                 % "hits" no matter what the mouse did
-                s_olfactometer.(programFieldName).outcome_by_trial(trialNum,1) = "hit";                       
+                s_olfactometer.(programFieldName).outcome_by_trial(trialNum,1) = "hit"; 
+                % label which side was rewarded
+                if ~isempty(find(contains(search_subset,'Reward R'),1))
+                    s_olfactometer.(programFieldName).rewarded_side(trialNum,1) = "R";
+                else
+                    s_olfactometer.(programFieldName).rewarded_side(trialNum,1) = "L";
+                end
             elseif size(find(contains(search_subset,'Lick')),1) < minLicksToTriggerReward                                       
                 % if trial is NOT rewarded and mouse licked less than 
                 % minLicksToTriggerReward times, the outcome is "miss"
-                s_olfactometer.(programFieldName).outcome_by_trial(trialNum,1) = "miss";                    
+                s_olfactometer.(programFieldName).outcome_by_trial(trialNum,1) = "miss"; 
+                s_olfactometer.(programFieldName).rewarded_side(trialNum,1) = "na";
             else
                 % if trial is NOT rewarded, but mouse licked more than minLicksToTriggerReward
                 % times, the mouse licked the wrong spout at some point, so the outcome
                 % is "false choice".
-                s_olfactometer.(programFieldName).outcome_by_trial(trialNum,1) = "false choice";                      
+                s_olfactometer.(programFieldName).outcome_by_trial(trialNum,1) = "false choice";   
+                s_olfactometer.(programFieldName).rewarded_side(trialNum,1) = "na";
             end
 
             % % measure lick latency and lick number (R licks) during
@@ -199,32 +203,35 @@ for programNum = 1:size(olfactometer_event_files,1)
             % set a search subset from "Odor onset" to "Trial Interval"
             % to find lick latency
             search_subset_from_odor = s_olfactometer.(programFieldName).file.Events(odorIdx_this_trial:lastIdx_this_trial);
-            odor_ts_this_trial = x_milliseconds(odorIdx_this_trial);
+            odor_ts_this_trial = x_seconds(odorIdx_this_trial);
 
             % measure lick latency and lick number (R licks) from odor
             % onset
             if ~isempty(find(contains(search_subset_from_odor,'Lick R'),1))
                 first_lick_R_idx_search_subset = find(contains(search_subset_from_odor,'Lick R'),1);
                 first_lick_R_idx_this_trial = odorIdx_this_trial + first_lick_R_idx_search_subset - 1;
-                first_lick_R_ts_this_trial = x_milliseconds(first_lick_R_idx_this_trial);
+                first_lick_R_ts_this_trial = x_seconds(first_lick_R_idx_this_trial);
                 first_lick_R_latency = first_lick_R_ts_this_trial - odor_ts_this_trial;
                 lick_R_num = size(find(contains(search_subset_from_odor,'Lick R')),1);
-                s_olfactometer.(programFieldName).lick_R_latency_ms(trialNum,1) = first_lick_R_latency;
+                s_olfactometer.(programFieldName).lick_R_latency_s(trialNum,1) = first_lick_R_latency;
                 s_olfactometer.(programFieldName).lick_R_total(trialNum,1) = lick_R_num;
             else
-                s_olfactometer.(programFieldName).lick_R_latency_ms(trialNum,1) = NaN;
+                s_olfactometer.(programFieldName).lick_R_latency_s(trialNum,1) = NaN;
                 s_olfactometer.(programFieldName).lick_R_total(trialNum,1) = NaN;
             end
 
             % measure lick latency and lick number (L licks) from odor
             % onset
             if ~isempty(find(contains(search_subset_from_odor,'Lick L'),1))
-                first_lick_L_idx = find(contains(search_subset_from_odor,'Lick L'),1);
+                first_lick_L_idx_search_subset = find(contains(search_subset_from_odor,'Lick L'),1);
+                first_lick_L_idx_this_trial = odorIdx_this_trial + first_lick_L_idx_search_subset - 1;
+                first_lick_L_ts_this_trial = x_seconds(first_lick_L_idx_this_trial);
+                first_lick_L_latency = first_lick_L_ts_this_trial - odor_ts_this_trial;
                 lick_L_num = size(find(contains(search_subset_from_odor,'Lick L')),1);
-                s_olfactometer.(programFieldName).lick_L_latency_ms(trialNum,1) = x_milliseconds(odor_start_idx(trialNum) + first_lick_L_idx - 1);
+                s_olfactometer.(programFieldName).lick_L_latency_s(trialNum,1) = first_lick_L_latency;
                 s_olfactometer.(programFieldName).lick_L_total(trialNum,1) = lick_L_num;
             else
-                s_olfactometer.(programFieldName).lick_L_latency_ms(trialNum,1) = NaN;
+                s_olfactometer.(programFieldName).lick_L_latency_s(trialNum,1) = NaN;
                 s_olfactometer.(programFieldName).lick_L_total(trialNum,1) = NaN;
             end
         end
@@ -274,6 +281,7 @@ db_trials = table(...
     NaN(trialsToAnalyze,1), ... % odor_start_min
     NaN(trialsToAnalyze,1), ... % odorID
     repmat("",trialsToAnalyze,1), ... % outcome
+    repmat("",trialsToAnalyze,1), ... % rewarded_side
     NaN(trialsToAnalyze,1), ... % R lick latency from odor onset
     NaN(trialsToAnalyze,1), ... % R lick total during odor and response window
     NaN(trialsToAnalyze,1), ... % L lick latency from odor onset
@@ -282,11 +290,11 @@ db_trials = table(...
     'programNum','programType','programName',...
     'trialNum_abs','trialNum_rel'...
     'trial_start_min','odor_start_min','odorID',...
-    'outcome',...
-    'R_lick_latency_ms_from_odor_onset',...
-    'R_lick_total_during_response',...
-    'L_lick_latency_ms_from_odor_onset',...
-    'L_lick_total_during_response'});    
+    'outcome','rewarded_side',...
+    'R_lick_latency_s_from_odor_onset',...
+    'R_lick_total_during_odor_and_response',...
+    'L_lick_latency_s_from_odor_onset',...
+    'L_lick_total_during_odor_and_response'});    
 
 % populate trials database
 % abs: absolute
@@ -308,12 +316,21 @@ for programNum = 1:size(programFieldNames,1)
         db_trials.date(abs_trialNum_next:abs_trialNum_total) = convertCharsToStrings(s_olfactometer.(programFieldName).shortName(1:10));
         db_trials.start_time(abs_trialNum_next:abs_trialNum_total) = convertCharsToStrings(s_olfactometer.(programFieldName).shortName(12:19));
         db_trials.programName(abs_trialNum_next:abs_trialNum_total) = convertCharsToStrings(s_olfactometer.(programFieldName).name(1:end-31));        
-        db_trials.R_lick_latency_ms_from_odor_onset(abs_trialNum_next:abs_trialNum_total) = s_olfactometer.(programFieldName).lick_R_latency_ms;
-        db_trials.R_lick_total_during_response(abs_trialNum_next:abs_trialNum_total) = s_olfactometer.(programFieldName).lick_R_total;
-        db_trials.L_lick_latency_ms_from_odor_onset(abs_trialNum_next:abs_trialNum_total) = s_olfactometer.(programFieldName).lick_L_latency_ms;
-        db_trials.L_lick_total_during_response(abs_trialNum_next:abs_trialNum_total) = s_olfactometer.(programFieldName).lick_L_total;
+        db_trials.R_lick_latency_s_from_odor_onset(abs_trialNum_next:abs_trialNum_total) = s_olfactometer.(programFieldName).lick_R_latency_s;
+        db_trials.R_lick_total_during_odor_and_response(abs_trialNum_next:abs_trialNum_total) = s_olfactometer.(programFieldName).lick_R_total;
+        db_trials.L_lick_latency_s_from_odor_onset(abs_trialNum_next:abs_trialNum_total) = s_olfactometer.(programFieldName).lick_L_latency_s;
+        db_trials.L_lick_total_during_odor_and_response(abs_trialNum_next:abs_trialNum_total) = s_olfactometer.(programFieldName).lick_L_total;
+        db_trials.rewarded_side(abs_trialNum_next:abs_trialNum_total) = s_olfactometer.(programFieldName).rewarded_side;
         abs_trialNum_next = abs_trialNum_total + 1;
     end
 end
 
 disp('got olfactometer data')
+
+
+%% Save workspace
+
+% save workspace variables
+matFileName = strcat(analysisDate, '_', mouseNum, '_behavior');
+save(fullfile(saveDir,matFileName));     
+disp('I saved the mat file')
