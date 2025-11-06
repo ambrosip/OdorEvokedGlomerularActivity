@@ -9,6 +9,11 @@ plot_subset = true;
 first_session = 1;
 last_session = 8;
 
+% outcome color-coding
+hit_color = [56 83 163]/255;
+false_choice_color = [236 30 36]/255;
+miss_color = [127 127 127]/255;
+
 
 %% MAIN
 
@@ -61,9 +66,9 @@ misses_per_session = data.miss_per_trial(first_session:last_session)/100;
 
 fig = figure('name', strcat(dataName{1}, '_', analysisDate, ' - performance'));
     hold on;
-    plot(hits_per_session,'Color',bluish_green_color,'LineWidth',1,'DisplayName','Hits');
-    plot(false_choices_per_session,'Color',vermillion_color,'LineWidth',1,'DisplayName','False choices');
-    plot(misses_per_session,'Color',black_color,'LineWidth',1,'DisplayName','Misses');
+    plot(hits_per_session,'Color',hit_color,'LineWidth',1,'DisplayName','Hits');
+    plot(false_choices_per_session,'Color',false_choice_color,'LineWidth',1,'DisplayName','False choices');
+    plot(misses_per_session,'Color',miss_color,'LineWidth',1,'DisplayName','Misses');
     yline(0.5,'--')
     axis([1 length(first_session:last_session) 0 1])
     yticks([0,1]);
@@ -79,17 +84,17 @@ fig = figure('name', strcat(dataName{1}, '_', analysisDate, ' - performance'));
 
 %% SAVE
 
-FigList = findobj(allchild(0), 'flat', 'Type', 'figure');
-
-% save all open figs
-for iFig = 1:length(FigList)
-  FigHandle = FigList(iFig);
-  FigName = FigList(iFig).Name;
-  set(0, 'CurrentFigure', FigHandle);
-  % forces matlab to save fig as a vector
-  FigHandle.Renderer = 'painters';  
-  % actually saves a vector file
-  saveas(FigHandle,fullfile(mainDir, [FigName '.svg']));
-end 
-disp('saved all figs')
-close all
+% FigList = findobj(allchild(0), 'flat', 'Type', 'figure');
+% 
+% % save all open figs
+% for iFig = 1:length(FigList)
+%   FigHandle = FigList(iFig);
+%   FigName = FigList(iFig).Name;
+%   set(0, 'CurrentFigure', FigHandle);
+%   % forces matlab to save fig as a vector
+%   FigHandle.Renderer = 'painters';  
+%   % actually saves a vector file
+%   saveas(FigHandle,fullfile(mainDir, [FigName '.svg']));
+% end 
+% disp('saved all figs')
+% close all
