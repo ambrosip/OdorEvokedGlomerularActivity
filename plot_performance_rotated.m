@@ -1,4 +1,4 @@
-function plot_performance_rotated(filtered_trials, trials_per_bin, hit_color, false_choice_color, miss_color)
+function plot_performance_rotated(filtered_trials, trials_per_bin, hit_color, false_choice_color, miss_color, hide_title, hide_x_labels, hide_y_labels)
 
 % to match the raster, I will make a rotated performance plot, with
 % outcome on the x-axis and trials on the y-axis
@@ -28,11 +28,21 @@ if trialBins >= 2
     axis([0 100 1 trialBins])
     xticks([0,100]);
     yticks([1,trialBins]);
-    ylabel(strcat("Session (", num2str(trials_per_bin), " trials)"));
-    xlabel('Outcome (%)');
-    title('Performance');
-    legend('Hit', 'False choice', 'Miss','Location','eastoutside')
-    legend('boxoff')
+
+    if ~hide_y_labels
+        ylabel(strcat("Session (", num2str(trials_per_bin), " trials)"));
+    end
+
+    if ~hide_x_labels
+        xlabel('Outcome (%)');
+    end
+
+    if ~hide_title
+        title('Performance');
+    end
+
+    % legend('Hit', 'False choice', 'Miss','Location','eastoutside')
+    % legend('boxoff')
     set(gca, 'YDir', 'reverse'); 
     set(gca,'FontName','Arial');
     set(gca,'TickLength', [0.025, 0.025]);

@@ -4,6 +4,7 @@
 % ASSUMPTION: all figures in folder rawImgDir have the same number of frames
 % and frame rate
 rawImgFileDirs = dir(fullfile(rawImgDir, '*.tif'));
+rawImgFileDirs = remove_stupid_mac_hidden_files(rawImgFileDirs);
 rawImgFileNames = {rawImgFileDirs.name}';
 rawImgToAnalyzeFileDir = fullfile(rawImgFileDirs(1).folder, rawImgFileDirs(1).name);
 

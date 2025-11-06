@@ -1,4 +1,4 @@
-function plot_licks(lick_side, filtered_trials, odorDur_s, totalDur_s, hit_color, false_choice_color, miss_color)
+function plot_licks(lick_side, filtered_trials, odorDur_s, totalDur_s, hit_color, false_choice_color, miss_color, hide_title, hide_x_labels, hide_y_labels)
 
 total_trials = size(filtered_trials,1);
 for trial = 1:total_trials
@@ -22,19 +22,27 @@ for trial = 1:total_trials
 end
 
 % beautifying
-if lick_side == "left"
-    title('L licks');
-elseif lick_side == "right"
-    title('R licks');
+if ~hide_title
+    if lick_side == "left"
+        title('L licks');
+    elseif lick_side == "right"
+        title('R licks');
+    end
 end
 axis([0,totalDur_s,0,total_trials+1])  
-xlabel('Time from odor onset (s)');
-if contains(filtered_trials(1,:).programName, "fine")
-    ylabel('Trials (Fine)')
-elseif contains(filtered_trials(1,:).programName, "coarse")
-    ylabel('Trials (Coarse)')
-else
-    ylabel('Trials')
+
+if ~hide_x_labels
+    xlabel('Time from odor onset (s)');
+end
+
+if ~hide_y_labels
+    if contains(filtered_trials(1,:).programName, "fine")
+        ylabel('Trials (Fine)')
+    elseif contains(filtered_trials(1,:).programName, "coarse")
+        ylabel('Trials (Coarse)')
+    else
+        ylabel('Trials')
+    end
 end
 yticks([1,total_trials]);
 xticks([0,odorDur_s,totalDur_s]);            

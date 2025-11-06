@@ -1,4 +1,4 @@
-function plot_performance_bars(filtered_trials, hit_color, false_choice_color, miss_color)
+function plot_performance_bars(filtered_trials, hit_color, false_choice_color, miss_color, hide_title, hide_x_labels, hide_y_labels)
 
 % create filters for plotting outcome by odor
 filtered_odor17_rows = filtered_trials.odorID == 17;
@@ -28,7 +28,7 @@ total_miss_odor19 = sum(matches(filtered_odor19_trials.outcome, "miss")) / total
 
 hold on;
 % x = [17 18 19];
-x = ["A" "B" "C"];
+x = ["α" "α'" "β"];
 y = 100 *...
     [total_hit_odor17 total_fc_odor17 total_miss_odor17;...
     total_hit_odor18 total_fc_odor18 total_miss_odor18;...
@@ -45,15 +45,27 @@ bh(3).FaceColor = 'flat';
 bh(3).CData = miss_color;
 
 % beautifying
-% bh_legend = legend('Hit', 'False choice', 'Miss', 'Location','eastoutside');
-% legend('boxoff')
+bh_legend = legend('Hit', 'False choice', 'Miss', 'Location','eastoutside');
+legend('boxoff')
+legend('Direction','normal')
 % set(bh_legend, 'Visible','off')
-xlabel('Odor');
-ylabel('Outcome %')
+
+if ~hide_x_labels
+    xlabel('Odor');
+end
+
+if ~hide_y_labels
+    ylabel('Outcome %')
+end
+
 yticks([0,100]);
 % xticks([17,18,19]);
-xticks = ["A" "B" "C"];
-title('Outcomes by odor');
+xticks = ["α" "α'" "β"];
+
+if ~hide_title
+    title('Outcomes by odor');
+end
+
 for bar_plotted = 1:3
     % bh(bar_plotted).LineStyle = 'none';
     bh(bar_plotted).BarWidth = 0.5;

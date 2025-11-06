@@ -4,6 +4,7 @@
 if analyzeMcorImgs == 1
     % get all tif file names in mcorImgDir
     imgsToAnalyzeDirs = dir(fullfile(mcorImgDir, '*.tif'));
+    imgsToAnalyzeDirs = remove_stupid_mac_hidden_files(imgsToAnalyzeDirs);
     imgsToAnalyzeNames = {imgsToAnalyzeDirs.name}';
     imgsToAnalyzeFolder = mcorImgDir;
     imgsToAnalyze_numberOf = length(imgsToAnalyzeNames);

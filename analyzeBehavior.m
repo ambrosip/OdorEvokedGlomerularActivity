@@ -2,11 +2,13 @@
 DOCUMENTATION
 %}
 
+% function analyzeBehavior(mouseDir, saveDir)
+
 clear all
 
 %% USER INPUT
 
-mouseDir = '/Users/priscilla/OHSU Dropbox/Priscilla Ambrosi/Dropbox - Moss Lab/Lab - Behavior/m237';
+mouseDir = '/Volumes/T7 Shield/From Mac/20250624';
 
 % label relevant events from olfactometer program that are not
 % automatically found
@@ -22,6 +24,7 @@ analysisDate =  datestr(datetime('today'),'yyyy-mm-dd');
 
 % create save dir if needed
 saveDir = fullfile(mouseDir,'matlab',analysisDate);
+
 % check if saveDir exists
 if not(isfolder(saveDir))
     % create saveDir
@@ -62,22 +65,7 @@ for programNum = 1:size(olfactometer_event_files,1)
     s_olfactometer.(programFieldName).dir = fullfile(s_olfactometer.(programFieldName).folder, s_olfactometer.(programFieldName).name);
     % load csv data and specify text data as string instead of char
     s_olfactometer.(programFieldName).file = readtable(s_olfactometer.(programFieldName).dir, TextType="string");
-    s_olfactometer.(programFieldName).shortName = s_olfactometer.(programFieldName).name(end-29:end-4);
-    % find rows inside Events csv with trial starts
-    trial_start_rows = contains(s_olfactometer.(programFieldName).file.Events,trial_start_label);
-    % find rows inside Events csv with licks
-    lick_R_rows = contains(s_olfactometer.(programFieldName).file.Events,"Lick R");
-    lick_L_rows = contains(s_olfactometer.(programFieldName).file.Events,"Lick L");
-    % x axis in minutes
-    % ALERT: comparing doubles can lead to errors 
-    x_minutes = table2array(s_olfactometer.(programFieldName).file(:,1))/60/1000;
-    x_seconds = table2array(s_olfactometer.(programFieldName).file(:,1))/1000;
-    x_milliseconds = table2array(s_olfactometer.(programFieldName).file(:,1));    
-    % timestamps for trial-starts
-    s_olfactometer.(programFieldName).startMin_by_trial = x_minutes(trial_start_rows);
-    % timestamps for licks
-    s_olfactometer.(programFieldName).lickR_s = x_seconds(lick_R_rows);
-    s_olfactometer.(programFieldName).lickL_s = x_seconds(lick_L_rows);
+    s_olfactometer.(programFieldName).shortName = s_olfactometer.(programFieldName).name(end-29:end-4);    
 
     % let's focus on the 2AFC programs (3, 4 and 5 series)
     if contains(s_olfactometer.(programFieldName).name, '2afc', 'IgnoreCase', true)
@@ -90,7 +78,26 @@ for programNum = 1:size(olfactometer_event_files,1)
     end
 
     % get further info from programs NOT labeled "ignore"
-    if s_olfactometer.(programFieldName).type ~= "ignore"
+    % also ignore stupid hidden files due to mac bs
+    if s_olfactometer.(programFieldName).type ~= "ignore" &&...
+            ~startsWith(s_olfactometer.(programFieldName).name, "._")
+
+        % find rows inside Events csv with trial starts
+        trial_start_rows = contains(s_olfactometer.(programFieldName).file.Events,trial_start_label);
+        % find rows inside Events csv with licks
+        lick_R_rows = contains(s_olfactometer.(programFieldName).file.Events,"Lick R");
+        lick_L_rows = contains(s_olfactometer.(programFieldName).file.Events,"Lick L");
+        % x axis in minutes
+        % ALERT: comparing doubles can lead to errors 
+        x_minutes = table2array(s_olfactometer.(programFieldName).file(:,1))/60/1000;
+        x_seconds = table2array(s_olfactometer.(programFieldName).file(:,1))/1000;
+        x_milliseconds = table2array(s_olfactometer.(programFieldName).file(:,1));    
+        % timestamps for trial-starts
+        s_olfactometer.(programFieldName).startMin_by_trial = x_minutes(trial_start_rows);
+        % timestamps for licks
+        s_olfactometer.(programFieldName).lickR_s = x_seconds(lick_R_rows);
+        s_olfactometer.(programFieldName).lickL_s = x_seconds(lick_L_rows);
+
         % label odors used in each trial
         % get list of unique odors used in the program
         eventTypes = unique(s_olfactometer.(programFieldName).file.Events);
@@ -297,7 +304,8 @@ abs_trialNum_total = 0;
 abs_trialNum_next = 1;
 for programNum = 1:size(programFieldNames,1)
     programFieldName = programFieldNames(programNum);
-    if s_olfactometer.(programFieldName).type ~= "ignore"
+    if s_olfactometer.(programFieldName).type ~= "ignore" &&...
+            ~startsWith(s_olfactometer.(programFieldName).name, "._")
         trialNum_here = size(s_olfactometer.(programFieldName).summary_by_trial,1);
         abs_trialNum_total = abs_trialNum_total + trialNum_here;
         db_trials.trialNum_rel(abs_trialNum_next:abs_trialNum_total) = (1:size(s_olfactometer.(programFieldName).summary_by_trial,1))';
@@ -340,7 +348,7 @@ for date = datesToPlot'
     try
         plotBehavior_taskSwitching(date, db_trials, saveDir, mouseNum)
     catch
-        plotBehavior(date, db_trials, saveDir)
+        plotBehavior_v2(date, db_trials, saveDir, mouseNum)
     end   
     disp(strcat("plotting ", date))
 end
@@ -387,3 +395,5 @@ end
             %     s_olfactometer.(programFieldName).lick_R_latency_s(trialNum,1) = NaN;
             %     s_olfactometer.(programFieldName).lick_R_total(trialNum,1) = NaN;
             % end
+
+% end

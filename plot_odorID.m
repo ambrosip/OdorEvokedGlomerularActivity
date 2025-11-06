@@ -1,4 +1,4 @@
-function plot_odorID(filtered_trials, odor17_color, odor18_color, odor19_color)
+function plot_odorID(filtered_trials, odor17_color, odor18_color, odor19_color, hide_title, hide_x_labels, hide_y_labels)
 
 col1 = filtered_trials.odorID == 17;
 col2 = filtered_trials.odorID == 18;
@@ -14,18 +14,27 @@ Ax = gca;
 Ax.XDisplayLabels = nan(size(Ax.XDisplayData));
 Ax.YDisplayLabels = nan(size(Ax.YDisplayData));
 
+% remove colorbar
+h.ColorbarVisible = 'off';
+
 % add custom x label
 customXLabels = {'A', 'B', 'C'};
 Ax.XDisplayLabels = customXLabels;
 
-% remove colorbar
-h.ColorbarVisible = 'off';
+if ~hide_title
+    % add title
+    title('Odor');
+end
+
+% if ~hide_x_labels
+%     xlabel('Odor');
+% end
 
 % adjust size
 % set(gcf,'OuterPosition',[100 100 50 350]);
 set(gcf,'Position',[100 100 50 350]);
 
-title('Odor');
+% adjust font
 set(gca,'FontName','Arial');
 set(findall(gcf,'-property','FontSize'),'FontSize',12)
 
