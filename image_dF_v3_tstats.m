@@ -8,7 +8,7 @@
 %% USER INPUT
 
 % Put NaN for automatic limits
-absoluteLimit = 5;
+absoluteLimit = 15;
 
 % Define percentiles
 % LOWER_QUANTILE = 0.0001;
@@ -191,11 +191,14 @@ for program_name = string(fieldnames(s_olfactometer))'
                 continue
             end
 
+            % Computes mean and standard error (std / sqrt(n)) of the image
+            image_mean = mean(figures(iFigure).(outcome).image(:));
+            std_err = std(figures(iFigure).(outcome).image(:)) / ...
+                sqrt(figures(iFigure).(outcome).total);
+
+            % Stores the t-value of each pixel in the image
             figures(iFigure).(outcome).image = ...
-                (figures(iFigure).(outcome).image - ...
-                mean(figures(iFigure).(outcome).image(:))) / ...
-                (std(figures(iFigure).(outcome).image(:)) / ...
-                sqrt(figures(iFigure).(outcome).total));
+                (figures(iFigure).(outcome).image - image_mean) / std_err;
         end
 
         % Don't compute the ratio if there are no acquisition files
@@ -346,7 +349,7 @@ if plotTogether
         ylabel(label, 'FontSize', 12);
     end
 
-    fig.Position = [200 150 frameSize(2)/3 * length(programTypes) + 50 ...
+    fig.Position = [200 150 frameSize(2)/3 * length(programTypes) + 150 ...
         frameSize(1)/3 * length(odors) + 150];
 
     % Uses the colormap created at the start
@@ -357,7 +360,7 @@ if plotTogether
     clim(plotRange);
 
     % ylabel(cb, 'dF/F', 'FontSize', 12);
-    ylabel(cb, 'Z-Score', 'FontSize', 12);
+    ylabel(cb, 't-value', 'FontSize', 12);
 
     tl.TileSpacing = 'tight';
     tl.Padding = 'tight';
