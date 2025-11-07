@@ -58,6 +58,7 @@ if ~hide_y_labels
     ylabel('Outcome %')
 end
 
+ylim([0 100]);
 yticks([0,100]);
 % xticks([17,18,19]);
 xticks = ["α" "α'" "β"];

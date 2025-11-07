@@ -4,12 +4,15 @@ close all
 
 %% USER INPUT
 
-mainDir = 'C:\Users\ambrosi\OHSU Dropbox\Priscilla Ambrosi\Dropbox - Moss Lab\Lab - Behavior\m291\2025_11_02-16_45_22';
+mainDir = '/Users/priscilla/OHSU Dropbox/Priscilla Ambrosi/Dropbox - Moss Lab/Lab - Behavior/m291/2025_11_01-16_52_17'
 plot_subset = true;
-first_session = 1;
-last_session = 8;
+first_session = 2;
+last_session = 7;
 
 % outcome color-coding
+% hit_color = [56 83 163]/255;
+% false_choice_color = [236 30 36]/255;
+% miss_color = [127 127 127]/255;
 hit_color = [56 83 163]/255;
 false_choice_color = [236 30 36]/255;
 miss_color = [127 127 127]/255;
@@ -33,6 +36,7 @@ analysisDate =  datestr(datetime('today'),'yyyy-mm-dd');
 
 % Get dir and name of excel file inside mainDir
 dataDir = dir(fullfile(mainDir, '*.xlsx'));
+dataDir = remove_stupid_mac_hidden_files(dataDir);
 dataFolder = {dataDir.folder}';
 dataName = {dataDir.name}';
 dataToAnalyze = fullfile(dataFolder{1}, dataName{1});
@@ -61,6 +65,10 @@ hits_per_session = data.hits_per_trial(first_session:last_session)/100;
 false_choices_per_session = data.false_per_trial(first_session:last_session)/100;
 misses_per_session = data.miss_per_trial(first_session:last_session)/100;
 
+% get number of trials 
+% ASSUMPTION: all sessions have the same number of trials
+numTrials = data(first_session,:).trial;
+
 
 %% PLOT
 
@@ -73,28 +81,34 @@ fig = figure('name', strcat(dataName{1}, '_', analysisDate, ' - performance'));
     axis([1 length(first_session:last_session) 0 1])
     yticks([0,1]);
     xticks([1,length(first_session:last_session)]);
-    xlabel('Session');
+    xlabel(strcat("Session (", num2str(numTrials), " trials)"));
     ylabel('Events/Trials');
-    title([dataName{1}, strcat("analyzed_on_", analysisDate)], 'Interpreter','none');
+    title([dataName{1}, strcat("analyzed_on_", analysisDate),''], 'Interpreter','none');
     hold off;
-    legend('Hits', 'False choices', 'Misses','Location','northwest')
-    legend('boxoff')
+    % legend('Hits', 'False choices', 'Misses','Location','northwest')
+    % legend('boxoff')
     set(fig, 'Position', [100 100 200 300])    % x y width height
+
+    set(gca,'FontName','Arial');
+    set(gca,'TickLength', [0.025, 0.025]);
+    set(gca,'LineWidth', 0.75);
+    set(findall(gcf,'-property','FontSize'),'FontSize',16)
+    set(gcf,'OuterPosition',[0 100 250 350]);
 
 
 %% SAVE
 
-% FigList = findobj(allchild(0), 'flat', 'Type', 'figure');
-% 
-% % save all open figs
-% for iFig = 1:length(FigList)
-%   FigHandle = FigList(iFig);
-%   FigName = FigList(iFig).Name;
-%   set(0, 'CurrentFigure', FigHandle);
-%   % forces matlab to save fig as a vector
-%   FigHandle.Renderer = 'painters';  
-%   % actually saves a vector file
-%   saveas(FigHandle,fullfile(mainDir, [FigName '.svg']));
-% end 
-% disp('saved all figs')
-% close all
+FigList = findobj(allchild(0), 'flat', 'Type', 'figure');
+
+% save all open figs
+for iFig = 1:length(FigList)
+  FigHandle = FigList(iFig);
+  FigName = FigList(iFig).Name;
+  set(0, 'CurrentFigure', FigHandle);
+  % forces matlab to save fig as a vector
+  FigHandle.Renderer = 'painters';  
+  % actually saves a vector file
+  saveas(FigHandle,fullfile(mainDir, [FigName '.svg']));
+end 
+disp('saved all figs')
+close all

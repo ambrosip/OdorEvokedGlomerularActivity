@@ -42,6 +42,9 @@ Ax.YDisplayLabels = nan(size(Ax.YDisplayData));
 % remove colorbar
 h.ColorbarVisible = 'off';
 
+% Turn off the grid lines
+h.GridVisible = 'off';
+
 % add custom x label
 customXLabels = {"α", "α'", "β"};
 Ax.XDisplayLabels = customXLabels;

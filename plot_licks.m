@@ -45,7 +45,8 @@ if ~hide_y_labels
     end
 end
 yticks([1,total_trials]);
-xticks([0,odorDur_s,totalDur_s]);            
+xticks([0,odorDur_s,totalDur_s]); 
+% set(gca,'TickDir','out');
 set(gca,'FontName','Arial');
 set(gca,'TickLength', [0.025, 0.025]);
 set(gca,'LineWidth', 0.75);
@@ -53,5 +54,6 @@ set(findall(gcf,'-property','FontSize'),'FontSize',12)
 set(gcf,'OuterPosition',[0 100 300 350]);
 set(gca,'Ydir','reverse');
 hold off;
+box off;
 
 end

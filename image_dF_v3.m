@@ -26,7 +26,7 @@ min_df_color = [5 48 97] / 255;
 
 % Plot one figure for each program and odor combination or plot only hits
 % (or only nas) for all programs and odors in a single figure?
-plotTogether = true;
+plotTogether = false;
 
 %% Extra inputs in case you run this before timeSeriesFromFijiROIs
 
@@ -433,22 +433,23 @@ end
 
 %% Save figs
 
-% FigList = findobj(allchild(0), 'flat', 'Type', 'figure');
-% 
-% % save all open figs
-% for iFig = 1:length(FigList)
-%     FigHandle = FigList(iFig);
-%     FigName = FigList(iFig).Name;
-%     set(0, 'CurrentFigure', FigHandle);
-%     % forces matlab to save fig as a vector
-%     FigHandle.Renderer = 'painters';
-%     % actually saves a vector file
-%     saveas(FigHandle, fullfile(saveDir, [FigName '.svg']));
-% end
-% disp('saved all figs')
-% close all
-% 
-% 
+FigList = findobj(allchild(0), 'flat', 'Type', 'figure');
+
+% save all open figs
+for iFig = 1:length(FigList)
+    FigHandle = FigList(iFig);
+    FigName = FigList(iFig).Name;
+    % set(0, 'CurrentFigure', FigHandle);
+    % % forces matlab to save fig as a vector
+    % FigHandle.Renderer = 'painters';
+    % % actually saves a vector file
+    % saveas(FigHandle, fullfile(saveDir, [FigName '.svg']));
+    saveas(FigHandle, fullfile(saveDir, [FigName '.tif']));
+end
+disp('saved all figs')
+close all
+
+
 % %% Save workspace
 % 
 % % save workspace variables

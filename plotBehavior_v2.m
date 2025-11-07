@@ -84,6 +84,12 @@ for program = unique(db_trials(filtered_rows_by_date,:).programNum)'
             '_program_',num2str(program),'_',...
             trials_to_analyze.programName(1));
         figName_suffix = "_all";
+
+        % create performance plot
+        figure('name',strcat(figName_prefix, "_vertical"));
+        plot_performance_vertical(trials_to_analyze, trials_per_bin, hit_color, false_choice_color, miss_color, false, false, false)
+      
+        % create main figure
         figure('name',strcat(figName_prefix, figName_suffix));
         
         % 4 rows: chronological (2), odor 17 (1), odor 18 (1)

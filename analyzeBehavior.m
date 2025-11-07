@@ -8,7 +8,7 @@ clear all
 
 %% USER INPUT
 
-mouseDir = '/Volumes/T7 Shield/From Mac/20250624';
+mouseDir = '/Users/priscilla/OHSU Dropbox/Priscilla Ambrosi/Dropbox - Moss Lab/Lab - Behavior/m260';
 
 % label relevant events from olfactometer program that are not
 % automatically found
@@ -326,6 +326,7 @@ for programNum = 1:size(programFieldNames,1)
         db_trials.rewarded_side(abs_trialNum_next:abs_trialNum_total) = s_olfactometer.(programFieldName).rewarded_side;
         db_trials.all_lick_R_latency_per_trial(abs_trialNum_next:abs_trialNum_total) = s_olfactometer.(programFieldName).all_lick_R_latency_per_trial;
         db_trials.all_lick_L_latency_per_trial(abs_trialNum_next:abs_trialNum_total) = s_olfactometer.(programFieldName).all_lick_L_latency_per_trial;
+        db_trials.avg_trial_dur_s(abs_trialNum_next:abs_trialNum_total) = mean(diff(s_olfactometer.(programFieldName).startMin_by_trial))*60;
         abs_trialNum_next = abs_trialNum_total + 1;
     end
 end
