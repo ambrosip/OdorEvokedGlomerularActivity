@@ -8,7 +8,7 @@ clear all
 
 %% USER INPUT
 
-mouseDir = '/Users/priscilla/OHSU Dropbox/Priscilla Ambrosi/Dropbox - Moss Lab/Lab - Behavior/m260';
+mouseDir = '/Users/priscilla/OHSU Dropbox/Priscilla Ambrosi/Dropbox - Moss Lab/Lab - Behavior/m291';
 
 % label relevant events from olfactometer program that are not
 % automatically found
@@ -350,6 +350,7 @@ for date = datesToPlot'
         plotBehavior_taskSwitching(date, db_trials, saveDir, mouseNum)
     catch
         plotBehavior_v2(date, db_trials, saveDir, mouseNum)
+        plotBehavior_appended(date, db_trials, saveDir, mouseNum)
     end   
     disp(strcat("plotting ", date))
 end

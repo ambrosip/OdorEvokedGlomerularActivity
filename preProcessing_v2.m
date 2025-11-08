@@ -4,7 +4,7 @@ close all
 %% USER INPUT - experiment directory and others - EDIT ME
 
 % experiment dir to be analyzed
-expDir = '/Volumes/T7 Shield/From Mac/20250624';
+expDir = '/Volumes/T7 Shield/From Mac/20250303_m0041_th-gcamp/e2';
 
 % variables made to deal with problem files
 ignoreLastTrial = 0;
@@ -28,7 +28,7 @@ odor_dur_h5 = '/OdorDelivery';
 
 % set program type x odor x action x outcome relationships
 olfactory_task = "2afc_fine_coarse_fine";
-% olfactory_task = "passive_odor_presentations";
+olfactory_task = "passive_odor_presentations";
 minLicksToTriggerReward = 3;
 
 % set max time interval (in min) between file acq time and trial onset 
