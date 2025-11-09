@@ -2,13 +2,13 @@
 DOCUMENTATION
 %}
 
-% function analyzeBehavior(mouseDir, saveDir)
+function analyzeBehavior(mouseDir,saveDir)
 
-clear all
+% clear all
 
 %% USER INPUT
 
-mouseDir = '/Users/priscilla/OHSU Dropbox/Priscilla Ambrosi/Dropbox - Moss Lab/Lab - Behavior/m291';
+% mouseDir = '/Users/priscilla/OHSU Dropbox/Priscilla Ambrosi/Dropbox - Moss Lab/Lab - Behavior/m291';
 
 % label relevant events from olfactometer program that are not
 % automatically found
@@ -23,7 +23,10 @@ minLicksToTriggerReward = 3;
 analysisDate =  datestr(datetime('today'),'yyyy-mm-dd');
 
 % create save dir if needed
-saveDir = fullfile(mouseDir,'matlab',analysisDate);
+if ~exist('saveDir', 'var')
+    saveDir = fullfile(mouseDir,'matlab-behavior',analysisDate);
+    disp('created saveDir')
+end
 
 % check if saveDir exists
 if not(isfolder(saveDir))
@@ -398,4 +401,4 @@ end
             %     s_olfactometer.(programFieldName).lick_R_total(trialNum,1) = NaN;
             % end
 
-% end
+end
