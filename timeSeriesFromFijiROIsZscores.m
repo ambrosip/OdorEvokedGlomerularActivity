@@ -70,7 +70,7 @@ if plotSubset
     firstAcq = 1;
     lastAcq = length(imgToAnalyzeFileDir);
 end
-lastAcq = 56;
+
 aFilenames = fieldnames(fileSignals);
 firstAcquisitionName = aFilenames{firstAcq};
 lastAcquisitionName = aFilenames{lastAcq};
