@@ -35,6 +35,9 @@ if ymin == 0
    ymin = -1;
 end
 
+ymin = -0.1;
+ymax = 0.1;
+
 % get max number of odors used in this experiment
 max_odor_num = 0;
 for programNum = 1:size(programFieldNames)

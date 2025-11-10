@@ -26,7 +26,7 @@ min_df_color = [5 48 97] / 255;
 
 % Plot one figure for each program and odor combination or plot only hits
 % (or only nas) for all programs and odors in a single figure?
-plotTogether = false;
+plotTogether = true;
 
 %% Extra inputs in case you run this before timeSeriesFromFijiROIs
 
@@ -443,16 +443,51 @@ for iFig = 1:length(FigList)
     % % forces matlab to save fig as a vector
     % FigHandle.Renderer = 'painters';
     % % actually saves a vector file
-    saveas(FigHandle, fullfile(saveDir, [FigName '.svg']));
-    % saveas(FigHandle, fullfile(saveDir, [FigName '.tif']));
+    % saveas(FigHandle, fullfile(saveDir, [FigName '.svg']));
+    saveas(FigHandle, fullfile(saveDir, [FigName '.tif']));
 end
 disp('saved all figs')
 close all
 
 
-%% Save workspace
+% %% Save workspace
+% 
+% % save workspace variables
+% matFileName = strcat(imgsToAnalyzeNames{1}(1:end-9),'_',imgsToAnalyzeNames{end}(end-13:end-4),'_preProcessing');
+% save(fullfile(saveDir,matFileName));
+% disp('saved mat file')
 
-% save workspace variables
-matFileName = strcat(imgsToAnalyzeNames{1}(1:end-9),'_',imgsToAnalyzeNames{end}(end-13:end-4),'_preProcessing');
-save(fullfile(saveDir,matFileName));
-disp('saved mat file')
+%% User Input for Difference between Z-Scores
+
+% User Input
+firstOdorType = "Fine 2";
+firstOdor = 17;
+firstResult = "hit"; % all lower case
+
+secondOdorType = "Coarse 2";
+secondOdor = 17;
+secondResult = "hit"; % all lower case
+
+zLimit = 10;
+
+%% Plot Difference between Z-Scores
+
+firstIdx = find([figures.type] == firstOdorType & ...
+    [figures.odor] == firstOdor);
+secondIdx = find([figures.type] == secondOdorType & ...
+    [figures.odor] == secondOdor);
+
+diffImage = abs(figures(firstIdx).(firstResult).image - ...
+    figures(secondIdx).(secondResult).image);
+
+plotRangeDiff = [0, zLimit];
+
+fig = figure('Name', 'Test');
+imshow(diffImage, plotRangeDiff);
+
+cbDiff = colorbar;
+cbDiff.Location = 'southoutside';
+
+colormap(flipud(bone));
+clim(plotRangeDiff);
+

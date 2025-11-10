@@ -1,9 +1,11 @@
 % batch_analyzeBehavior SCRIPT
 
+clear all
+
 %% USER INPUTS 
 
-mainDir = 'M:\ImagingData';
-% matchingFolders = findDateTimeFolders(mainDir);
+mainDir = '/Users/priscilla/OHSU Dropbox/Priscilla Ambrosi/Dropbox - Moss Lab/Lab - Data/Olfactometer';
+matchingFolders = findDateTimeFolders(mainDir);
 
 
 %% MAIN

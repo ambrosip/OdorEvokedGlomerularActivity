@@ -4,7 +4,7 @@ close all
 %% USER INPUT - experiment directory and others - EDIT ME
 
 % experiment dir to be analyzed
-expDir = '/Volumes/T7 Shield/From Mac/20250303_m0041_th-gcamp/e2';
+expDir = '/Users/priscilla/Documents/Local - Moss Lab/20251006/sid291/e1';
 
 % variables made to deal with problem files
 ignoreLastTrial = 0;

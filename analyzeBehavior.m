@@ -2,13 +2,13 @@
 DOCUMENTATION
 %}
 
-function analyzeBehavior(mouseDir,saveDir)
+% function analyzeBehavior(mouseDir,saveDir)
 
-% clear all
+clear all
 
 %% USER INPUT
 
-% mouseDir = '/Users/priscilla/OHSU Dropbox/Priscilla Ambrosi/Dropbox - Moss Lab/Lab - Behavior/m291';
+mouseDir = '/Users/priscilla/OHSU Dropbox/Priscilla Ambrosi/Dropbox - Moss Lab/Lab - Behavior/m291';
 
 % label relevant events from olfactometer program that are not
 % automatically found
@@ -114,8 +114,16 @@ for programNum = 1:size(olfactometer_event_files,1)
 
         % iterate through odors
         for odorNum = 1:length(s_olfactometer.(programFieldName).odorList) 
+            % ASSUMPTION: in the olfactometer odor setup, odors were named
+            % "number - name".
             odorID = extractBetween(s_olfactometer.(programFieldName).odorList(odorNum),"I "," -");
-            odorFieldName = strcat('odor_',odorID);
+            % deal with cases when odors were named in a different way
+            if isempty(odorID)
+                odorID = num2str(1000+odorNum);
+                odorFieldName = strcat('odor_',odorID);
+            else
+                odorFieldName = strcat('odor_',odorID);
+            end
             s_olfactometer.(programFieldName).odorFieldNames(odorNum) = odorFieldName;
             % find rows inside Events csv with odors
             odor_start_rows = matches(s_olfactometer.(programFieldName).file.Events,s_olfactometer.(programFieldName).odorList(odorNum));
@@ -123,7 +131,7 @@ for programNum = 1:size(olfactometer_event_files,1)
             s_olfactometer.(programFieldName).(odorFieldName).startMin_by_odor = x_minutes(odor_start_rows);
             % save array with timestamp (in min) and odor presented
             odor_start_ts_labeled = x_minutes(odor_start_rows);
-            odor_start_ts_labeled(:,2) = odorID;
+            odor_start_ts_labeled(:,2) = str2num(odorID);
             odor_start_ts_labeled_all = [odor_start_ts_labeled_all; odor_start_ts_labeled];
         end
 
@@ -401,4 +409,4 @@ end
             %     s_olfactometer.(programFieldName).lick_R_total(trialNum,1) = NaN;
             % end
 
-end
+% end

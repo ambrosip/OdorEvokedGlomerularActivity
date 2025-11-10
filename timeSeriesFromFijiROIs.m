@@ -34,6 +34,7 @@ roi_file_dir = fullfile(roi_file_folder,roi_file_name);
 
 % Get fiji Avg Intensity Projection file (zProj = z Projection)
 zProjFileDirs = dir(fullfile(expDir, 'processed', 'fiji', '*.tif'));
+zProjFileDirs = remove_stupid_mac_hidden_files(zProjFileDirs);
 zProjFileNames = {zProjFileDirs.name}';
 zProjFileFolders = {zProjFileDirs.folder}';
 zProj_numberOf = length(zProjFileNames);
@@ -49,6 +50,7 @@ zProjFileToAnalyze = imread(zProjFileToAnalyzeDir);
 
 % Get fiji ROI file (roi = regions of interest)
 roisFileDirs = dir(fullfile(expDir, 'processed', 'fiji', '*.zip'));
+roisFileDirs = remove_stupid_mac_hidden_files(roisFileDirs);
 roisFileNames = {roisFileDirs.name}';
 roisFileFolders = {roisFileDirs.folder}';
 % ALERT: only analyzing the 1st .zip file found
@@ -107,10 +109,12 @@ for file = 1:imgsToAnalyze_numberOf
         % range of values is >= zero. FYI, imread saves data as double.
         imgToAnalyze = imread(imgToAnalyzeFileDir,frame);
 
+        % ------------- COMMENTED OUT FOR TESTING --------------------- %
         % Make sure that all entries of imgToAnalize are >= zero
-        if min(imgToAnalyze, [], 'all') < 0
-            imgToAnalyze = imgToAnalyze - min(imgToAnalyze, [], 'all');
-        end
+        % if min(imgToAnalyze, [], 'all') < 0
+        %     imgToAnalyze = imgToAnalyze - min(imgToAnalyze, [], 'all');
+        % end
+        % ------------------------------------------------------------- %
 
         % % old code, kept for archiving purposes
         % % deal with 32-bit files - this does NOT WORK - DO NOT USE
@@ -157,6 +161,7 @@ if plotSubset == 0
     firstAcq = 1;
     lastAcq = imgsToAnalyze_numberOf;
 end
+
 fns = fieldnames(s);
 firstAcqName = fns{firstAcq};
 lastAcqName = fns{lastAcq};
