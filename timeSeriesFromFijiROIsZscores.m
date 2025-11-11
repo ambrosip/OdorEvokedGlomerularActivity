@@ -332,6 +332,13 @@ for programNum = unique(db_trials.programNum)'
             % Add new matrix to the structure
             s_mean_zscore.(programFieldName).(odorFieldName).(outcomeFieldName) = ...
                 allFrames_allROIs_meanAcq;
+
+            % Also, storing the matrix before averaging
+            s_zscore.(programFieldName).(odorFieldName).(outcomeFieldName) = ...
+                allFrames_allROIs_allAcq;
+
+            % TO DO: s_mean_zscore is redundant, remove it by changing
+            % ------ the code that comes later (adding the relevant means)
         end
     end
 end  
@@ -379,6 +386,7 @@ for iROI = 1:nROIs
 
         % Get program type to make tile title
         programType = s_olfactometer.(programFieldName).type;
+        odorList = s_olfactometer.(programFieldName).odorList;
 
         for iOdor = 1:length(allOdorFieldName)
             odorFieldName = allOdorFieldName{iOdor};
@@ -478,6 +486,7 @@ if plotROIsubset == 1
     
             % Get program type to make tile title
             programType = s_olfactometer.(programFieldName).type;
+            odorList = s_olfactometer.(programFieldName).odorList;
     
             % Create the plot
             nexttile(1 + (iProgram - 1) * columns)
@@ -568,6 +577,7 @@ else
     
             % Get program type to make tile title
             programType = s_olfactometer.(programFieldName).type;
+            odorList = s_olfactometer.(programFieldName).odorList;
     
             % Create the plot
             nexttile(1 + (iProgram - 1) * columns)
@@ -638,6 +648,136 @@ else
     end
 end
 
+%% PLOT AVGS - hits and false choices (with ranges), color-coded by outcome
+
+allProgramFieldName = fieldnames(s_zscore);
+
+% (number of odors) x (number of programs + extra columns)
+% The extra columns are to put the plot showing the ROI
+extraColumns = 3;
+
+rows = length(allProgramFieldName);
+columns = maxOdorNumber + extraColumns;
+
+% Struct with the outcome colors, for easy reference
+outcomeColors = struct( ...
+    'hit', [56 83 163]/255, ...
+    'false_choice', [236 30 36]/255, ...
+    'miss',  [127 127 127]/255 ...
+    );
+
+% xsx is the palindromic version of xs (needed for the fill plot)
+xsx = [xs flip(xs)];
+
+for iROI = 1:nROIs
+    % Create one figure per ROI
+    figName = strcat( ...
+        firstAcquisitionName, '_to_', lastAcquisitionName, ...
+        '_roi_', num2str(iROI), '_zdFF_ranges');
+
+    fig = figure('Name', figName);
+
+    % Plot settings
+    set(gca, 'FontName', 'Arial');
+    set(gcf, 'OuterPosition', [100 100 1400 900]);
+    set(gca, 'LineWidth', 0.75);
+
+    % Create tiledlayout of shape odors by programs
+    t = tiledlayout(rows, columns);
+    title(t, figName, 'Interpreter','none');
+
+    % Iterate through programs and odors, getting the fieldnames as we go
+    for iProgram = 1:length(allProgramFieldName)
+        % Get the struct to shorten the names in the next for loops
+        programFieldName = allProgramFieldName{iProgram};        
+        programStruct = s_zscore.(programFieldName);
+        allOdorFieldName = fieldnames(programStruct);
+
+        % Get program type to make tile title
+        programType = s_olfactometer.(programFieldName).type;
+        odorList = s_olfactometer.(programFieldName).odorList;
+
+        for iOdor = 1:length(allOdorFieldName)
+            odorFieldName = allOdorFieldName{iOdor};
+            odorStruct = programStruct.(odorFieldName);
+            allOutcomeFieldName = fieldnames(odorStruct);
+            
+            % Create the plot
+            nexttile(iOdor + (iProgram - 1) * columns)
+            hold on;
+            
+            % Getting the odorID like Priscilla did
+            odorID = extractBetween(odorList(iOdor), "I ", " -");
+
+            % More plot settings + highlighting odor presentation window
+            rectangle('Position',[0 ymin odor_dur_s ymax-ymin], ...
+                'FaceAlpha',0.05,'FaceColor',[0 0 0],'EdgeColor', 'none');
+            yline(0,'k--')
+
+            axis([xmin xmax ymin ymax])
+            title(strcat(odorFieldName, '_', programType), ...
+                'Interpreter', 'none');
+            xlabel('Time from odor onset (s)')
+            ylabel('dF/F Z-score')
+            
+            % Iterate through outcomes, plotting both on the same graph
+            for iOutcome = 1:length(allOutcomeFieldName)
+                outcomeFieldName = allOutcomeFieldName{iOutcome};
+
+                % Get the color from struct
+                color = outcomeColors.(outcomeFieldName);
+
+                % Gets data for this ROI and all acquisitions
+                allFrames_allROIs_allAcq = odorStruct.(outcomeFieldName);
+                allFrames_thisROI_allAcq = ...
+                    allFrames_allROIs_allAcq(:,iROI,:);
+
+                % Get the max, min, and mean along acquisitions
+                allFrames_thisROI_maxAcq = ...
+                    max(allFrames_thisROI_allAcq, [], 3);
+                allFrames_thisROI_minAcq = ...
+                    min(allFrames_thisROI_allAcq, [], 3);
+                allFrames_thisROI_meanAcq = ...
+                    mean(allFrames_thisROI_allAcq, 3);
+
+                % Create ys for fill polygon (xs were done at the start)
+                ys = [allFrames_thisROI_minAcq; ...
+                    flip(allFrames_thisROI_maxAcq)];
+
+                fill(xsx, ys, [color 0.4]);
+
+                % Lines are a little less transparent and thicker than
+                % in other graphs (0.5 to 0.7 for both of them).
+                plot(xs', allFrames_thisROI_meanAcq, ...
+                    'Color', [color 0.7], 'LineWidth', 0.7);
+            end
+
+            hold off;
+            disp(strcat("plot odor ", odorID, " done"))
+        end
+    end
+
+    % Last tile showing the ROI
+    nexttile(columns - extraColumns + 1, [rows, extraColumns])
+    
+    hold on
+    imshow(imadjust(cast(zProjFileToAnalyze,'uint16')))
+
+    thetas = linspace(0,2*pi,200);
+    ellipseR1 = (ROIs{iROI}.vnRectBounds(4) - ROIs{iROI}.vnRectBounds(2))/2;
+    ellipseR2 = (ROIs{iROI}.vnRectBounds(3) - ROIs{iROI}.vnRectBounds(1))/2;
+    ellipseA = (ROIs{iROI}.vnRectBounds(4) + ROIs{iROI}.vnRectBounds(2))/2;
+    ellipseB = (ROIs{iROI}.vnRectBounds(3) + ROIs{iROI}.vnRectBounds(1))/2;
+    ellipseX = ellipseR1 * cos(thetas) + ellipseA;
+    ellipseY = ellipseR2 * sin(thetas) + ellipseB; 
+    plot(ellipseX, ellipseY, 'Color', 'y', 'LineWidth', 1);
+
+    hold off  
+
+    t.TileSpacing = 'compact';
+    t.Padding = 'compact';
+    disp(strcat("plot roi ", num2str(iROI), " done"))
+end
 
 %% Save figs
 
