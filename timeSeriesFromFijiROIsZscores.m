@@ -412,23 +412,16 @@ end
 
 allProgramFieldName = fieldnames(s_mean_zscore);
 
-% (number of odors) x (number of programs + 1)
-% The extra column is to put the plot showing the ROI
-rows = maxOdorNumber;
-columns = length(allProgramFieldName) + 1;
-
-% Struct with the odor colors, for easy reference
-odorColors = struct( ...
-    'hit', [56 83 163]/255, ...
-    'false_choice', [236 30 36]/255, ...
-    'miss',  [127 127 127]/255 ...
-    );
+% (number of programs) x (columns spanned by ROI plot + 1)
+% One column for all odors and the  rest for ROI plot
+rows = length(allProgramFieldName);
+columns = 4;
 
 for iROI = 1:nROIs
     % Create one figure per ROI
     figName = strcat( ...
         firstAcquisitionName, '_to_', lastAcquisitionName, ...
-        '_roi_', num2str(iROI), '_zdFF_AVG');
+        '_roi_', num2str(iROI), '_zdFF_AVG_only_hits');
 
     fig = figure('Name', figName);
 
@@ -439,7 +432,7 @@ for iROI = 1:nROIs
 
     % Create tiledlayout of shape odors by programs
     t = tiledlayout(rows, columns);
-    title(t, figName, 'Interpreter','none');
+    title(t, figName, 'Interpreter', 'none');
 
     % Iterate through programs and odors, getting the fieldnames as we go
     for iProgram = 1:length(allProgramFieldName)
@@ -451,52 +444,47 @@ for iROI = 1:nROIs
         % Get program type to make tile title
         programType = s_olfactometer.(programFieldName).type;
 
+        % Create the plot
+        nexttile(1 + (iProgram - 1) * columns)
+        hold on;
+
+        % More plot settings + highlighting odor presentation window
+        rectangle('Position',[0 ymin odor_dur_s ymax-ymin], ...
+            'FaceAlpha',0.05,'FaceColor',[0 0 0],'EdgeColor', 'none');
+        yline(0,'k--')
+
+        axis([xmin xmax ymin ymax])
+        title(strcat(odorFieldName, '_', programType), ...
+            'Interpreter', 'none');
+        xlabel('Time from odor onset (s)')
+        ylabel('dF/F Z-score')
+
         for iOdor = 1:length(allOdorFieldName)
             odorFieldName = allOdorFieldName{iOdor};
             odorStruct = programStruct.(odorFieldName);
             allOutcomeFieldName = fieldnames(odorStruct);
             
-            % Create the plot
-            nexttile(iProgram + (iOdor - 1) * columns)
-            hold on;
-            
             % Getting the odorID like Priscilla did
             odorID = extractBetween(odorList(iOdor), "I ", " -");
 
-            % More plot settings + highlighting odor presentation window
-            rectangle('Position',[0 ymin odor_dur_s ymax-ymin], ...
-                'FaceAlpha',0.05,'FaceColor',[0 0 0],'EdgeColor', 'none');
-            yline(0,'k--')
+            color = color_ids(find(odor_ids == str2double(odorID), 1), :);
 
-            axis([xmin xmax ymin ymax])
-            title(strcat(odorFieldName, '_', programType), ...
-                'Interpreter', 'none');
-            xlabel('Time from odor onset (s)')
-            ylabel('dF/F Z-score')
-            
-            % Iterate through outcomes, plotting both on the same graph
-            for iOutcome = 1:length(allOutcomeFieldName)
-                outcomeFieldName = allOutcomeFieldName{iOutcome};
+            % This has all the ROIs so we get a slice below
+            allFrames_allROIs = odorStruct.hits;
 
-                % This has all the ROIs so we get a slice below
-                allFrames_allROIs = odorStruct.(outcomeFieldName);
-
-                % Get the color from struct
-                color = outcomeColors.(outcomeFieldName);
-
-                % Lines are a little less transparent and thicker than
-                % in other graphs (0.5 to 0.7 for both of them).
-                plot(xs', allFrames_allROIs(:, iROI), ...
+            % Lines are a little less transparent and thicker than
+            % in other graphs (0.5 to 0.7 for both of them).
+            plot(xs', allFrames_allROIs(:, iROI), ...
                     'Color', [color 0.7], 'LineWidth', 0.7);
-            end
 
-            hold off;
             disp(strcat("plot odor ", odorID, " done"))
         end
+
+        hold off;
     end
 
     % Last tile showing the ROI
-    nexttile(columns, [maxOdorNumber, 1])
+    nexttile(columns, [rows, columns - 1])
     
     hold on
     imshow(imadjust(cast(zProjFileToAnalyze,'uint16')))
