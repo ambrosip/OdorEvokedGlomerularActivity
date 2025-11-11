@@ -8,7 +8,7 @@
 %% USER INPUT
 
 % Put NaN for automatic limits
-absoluteLimit = 5;
+absoluteLimit = 1;
 
 % Define percentiles
 % LOWER_QUANTILE = 0.0001;
