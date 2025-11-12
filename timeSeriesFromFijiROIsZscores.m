@@ -673,13 +673,13 @@ for iROI = 1:nROIs
     % Create one figure per ROI
     figName = strcat( ...
         firstAcquisitionName, '_to_', lastAcquisitionName, ...
-        '_roi_', num2str(iROI), '_zdFF_ranges');
+        '_roi_', num2str(iROI), '_zdFF_stderr');
 
     fig = figure('Name', figName);
 
     % Plot settings
     set(gca, 'FontName', 'Arial');
-    set(gcf, 'OuterPosition', [100 100 1400 900]);
+    set(gcf, 'OuterPosition', [100 100 1600 900]);
     set(gca, 'LineWidth', 0.75);
 
     % Create tiledlayout of shape odors by programs
@@ -732,19 +732,21 @@ for iROI = 1:nROIs
                 allFrames_thisROI_allAcq = ...
                     allFrames_allROIs_allAcq(:,iROI,:);
 
-                % Get the max, min, and mean along acquisitions
-                allFrames_thisROI_maxAcq = ...
-                    max(allFrames_thisROI_allAcq, [], 3);
-                allFrames_thisROI_minAcq = ...
-                    min(allFrames_thisROI_allAcq, [], 3);
+                % Get the mean and stderr along acquisitions
                 allFrames_thisROI_meanAcq = ...
                     mean(allFrames_thisROI_allAcq, 3);
+                allFrames_thisROI_stderrAcq = ...
+                    std(allFrames_thisROI_allAcq, 0, 3) / ...
+                    sqrt(size(allFrames_thisROI_allAcq, 3));
 
-                % Create ys for fill polygon (xs were done at the start)
-                ys = [allFrames_thisROI_minAcq; ...
-                    flip(allFrames_thisROI_maxAcq)];
+                % Compute fill limits (xs were done at the start)
+                upperBound = allFrames_thisROI_meanAcq + ...
+                    allFrames_thisROI_stderrAcq;
+                lowerBound = allFrames_thisROI_meanAcq - ...
+                    allFrames_thisROI_stderrAcq;
 
-                fill(xsx, ys, [color 0.4]);
+                fill(xsx', [lowerBound; flip(upperBound)], color, ...
+                    'FaceAlpha', 0.3, 'EdgeColor', 'none');
 
                 % Lines are a little less transparent and thicker than
                 % in other graphs (0.5 to 0.7 for both of them).
