@@ -1,9 +1,10 @@
+%%
 if olfactory_task ~= "passive_odor_presentations"
     error("check the olfactory_task")
 end
 
 
-%%
+%% PREP
 
 % Gets the first integer below min and first above max
 ymax = ceil(max(structfun(@(x) max(x,[],'all'), ...
@@ -121,6 +122,13 @@ for iROI = 1:nROIs
             hold off;
             disp(strcat("plot odor ", odorID, " done"))
         end
+
+        % Plot settings
+        set(gca, 'FontName', 'Arial');
+        set(gcf, 'OuterPosition', [100 100 500 900]);
+        set(gca, 'LineWidth', 0.75);
+        set(findall(gcf,'-property','FontSize'),'FontSize',12)
+
     end
 
     % Last tile showing the ROI

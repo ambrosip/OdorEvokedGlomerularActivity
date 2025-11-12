@@ -1,6 +1,6 @@
 %% USER INPUT
 
-plotROIsubset = 1;
+plotROIsubset = 0;
 ROIsubset = [1, 2, 4, 7, 12, 14, 18, 19, 21, 24, 25, 26, 33, 34, 35];
 
 % plotSubset = 0;
