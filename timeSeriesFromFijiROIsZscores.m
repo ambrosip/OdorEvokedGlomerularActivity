@@ -1,5 +1,13 @@
 %% USER INPUT
 
+manual_y_limits = 1;
+ymax = 10;
+ymin = -10;
+
+manual_x_limits = 1;
+xmin = -2;
+xmax = 4;
+
 plotROIsubset = 0;
 ROIsubset = [1, 2, 4, 7, 12, 14, 18, 19, 21, 24, 25, 26, 33, 34, 35];
 
@@ -41,6 +49,14 @@ color_ids = [black_color; reddish_purple_color;...
     blue_color; sky_blue_color; vermillion_color; orange_color;...
     blue_color; sky_blue_color; vermillion_color; orange_color];
 odor_color = table(odor_ids,color_ids,'VariableNames',{'odorID','colorID'});
+
+% Struct with the outcome colors, for easy reference
+outcomeColors = struct( ...
+    'hit', [56 83 163]/255, ...
+    'false_choice', [236 30 36]/255, ...
+    'miss',  [127 127 127]/255, ...
+    'na', dark_teal_color ...
+    );
 
 
 %% Get dir of fiji files
@@ -144,7 +160,7 @@ for file = firstAcq:lastAcq
     dFF = (croppedSignal - meanBaseline) ./ meanBaseline;
     baseline = dFF(1:adjustedBaselineEnd, :);
     
-    zdFF = (dFF - mean(dFF, 1)) ./ std(dFF, 0, 1);
+    zdFF = (dFF - mean(baseline, 1)) ./ std(baseline, 0, 1);
     fileZdFF.(aFilenames{file}) = zdFF;
 end
 
@@ -161,17 +177,21 @@ xs = linspace(-odorOnset, adjustedImageDuration - odorOnset, ...
 disp("Calculated Z-scores of dF/F")
 
 
-%% PLOT data in ROIs organized by odor (rows) and program type (columns)
+%% Prep for plots
 
-% Gets the first integer below min and first above max
-ymax = ceil(max(structfun(@(x) max(x,[],'all'), ...
-    fileZdFF,'UniformOutput',true)));
-ymin = floor(min(structfun(@(x) min(x,[],'all'), ...
-    fileZdFF,'UniformOutput',true)));
+if manual_y_limits == 0
+    % Gets the first integer below min and first above max
+    ymax = ceil(max(structfun(@(x) max(x,[],'all'), ...
+        fileZdFF,'UniformOutput',true)));
+    ymin = floor(min(structfun(@(x) min(x,[],'all'), ...
+        fileZdFF,'UniformOutput',true)));
+end
 
-% Get the min and max value for x
-xmin = round(xs(1));
-xmax = round(xs(end));
+if manual_x_limits == 0
+    % Get the min and max value for x
+    xmin = round(xs(1));
+    xmax = round(xs(end));
+end
 
 % Get the max number of odors used in this experiment
 maxOdorNumber = 0;
@@ -190,6 +210,9 @@ end
 rows = maxOdorNumber;
 columns = programsToAnalyze + 1;
 
+
+%% PLOT data in ROIs organized by odor (rows) and program type (columns)
+
 for iROI = 1:nROIs
     figName = strcat( ...
         firstAcquisitionName, '_to_', lastAcquisitionName, ...
@@ -203,7 +226,7 @@ for iROI = 1:nROIs
     set(gca, 'LineWidth', 0.75);
 
     t = tiledlayout(rows, columns);
-    title(t, figName);
+    title(t, figName, 'Interpreter','none');
 
     iProgramRelative = 0;
     for iProgram = 1:length(programFieldNames)
@@ -269,7 +292,7 @@ for iROI = 1:nROIs
 end
 
 
-%% Get average z-score per odor per block (program) per roi
+%% Get average z-score per odor per block (i.e. program) per roi
 
 % Get size from first zdFF matrix (frames per ROIs)
 fileZdFF_fieldnames = fieldnames(fileZdFF);
@@ -290,6 +313,7 @@ for programNum = unique(db_trials.programNum)'
                     rowsToKeep_thisOutcome);
 
             acqsIdxToKeep = db_trials.acqIdx(rowsToKeep);
+            acqsIdxToKeep = rmmissing(acqsIdxToKeep); % remove nans
             acqsTotal = numel(acqsIdxToKeep);
 
             fieldnamesToKeep = fileZdFF_fieldnames(acqsIdxToKeep);
@@ -352,13 +376,6 @@ allProgramFieldName = fieldnames(s_mean_zscore);
 % The extra column is to put the plot showing the ROI
 rows = maxOdorNumber;
 columns = length(allProgramFieldName) + 1;
-
-% Struct with the outcome colors, for easy reference
-outcomeColors = struct( ...
-    'hit', [56 83 163]/255, ...
-    'false_choice', [236 30 36]/255, ...
-    'miss',  [127 127 127]/255 ...
-    );
 
 for iROI = 1:nROIs
     % Create one figure per ROI
@@ -648,7 +665,8 @@ else
     end
 end
 
-%% PLOT AVGS - hits and false choices (with ranges), color-coded by outcome
+
+%% PLOT AVGS - all outcomes (with SEM), color-coded by outcome (or odor, if outcome is nan)
 
 allProgramFieldName = fieldnames(s_zscore);
 
@@ -659,13 +677,6 @@ extraColumns = 3;
 rows = length(allProgramFieldName);
 columns = maxOdorNumber + extraColumns;
 
-% Struct with the outcome colors, for easy reference
-outcomeColors = struct( ...
-    'hit', [56 83 163]/255, ...
-    'false_choice', [236 30 36]/255, ...
-    'miss',  [127 127 127]/255 ...
-    );
-
 % xsx is the palindromic version of xs (needed for the fill plot)
 xsx = [xs flip(xs)];
 
@@ -673,14 +684,9 @@ for iROI = 1:nROIs
     % Create one figure per ROI
     figName = strcat( ...
         firstAcquisitionName, '_to_', lastAcquisitionName, ...
-        '_roi_', num2str(iROI), '_zdFF_stderr');
+        '_roi_', num2str(iROI), '_zdFF_SEM');
 
     fig = figure('Name', figName);
-
-    % Plot settings
-    set(gca, 'FontName', 'Arial');
-    set(gcf, 'OuterPosition', [100 100 1600 900]);
-    set(gca, 'LineWidth', 0.75);
 
     % Create tiledlayout of shape odors by programs
     t = tiledlayout(rows, columns);
@@ -713,26 +719,25 @@ for iROI = 1:nROIs
             rectangle('Position',[0 ymin odor_dur_s ymax-ymin], ...
                 'FaceAlpha',0.05,'FaceColor',[0 0 0],'EdgeColor', 'none');
             yline(0,'k--')
-
-            axis([xmin xmax ymin ymax])
-            title(strcat(odorFieldName, '_', programType), ...
-                'Interpreter', 'none');
-            xlabel('Time from odor onset (s)')
-            ylabel('dF/F Z-score')
             
             % Iterate through outcomes, plotting both on the same graph
             for iOutcome = 1:length(allOutcomeFieldName)
                 outcomeFieldName = allOutcomeFieldName{iOutcome};
 
-                % Get the color from struct
-                color = outcomeColors.(outcomeFieldName);
+                if olfactory_task == "passive_odor_presentations"
+                    % Get the odor color from user input in preProcessing_v2
+                    color = odor_color.colorID(odor_color.odorID==str2double(odorID),:);
+                else
+                    % Get the outcome color from struct in user input
+                    color = outcomeColors.(outcomeFieldName);
+                end
 
                 % Gets data for this ROI and all acquisitions
                 allFrames_allROIs_allAcq = odorStruct.(outcomeFieldName);
                 allFrames_thisROI_allAcq = ...
                     allFrames_allROIs_allAcq(:,iROI,:);
 
-                % Get the mean and stderr along acquisitions
+                % Get the mean and stderr (SEM) along acquisitions
                 allFrames_thisROI_meanAcq = ...
                     mean(allFrames_thisROI_allAcq, 3);
                 allFrames_thisROI_stderrAcq = ...
@@ -751,11 +756,28 @@ for iROI = 1:nROIs
                 % Lines are a little less transparent and thicker than
                 % in other graphs (0.5 to 0.7 for both of them).
                 plot(xs', allFrames_thisROI_meanAcq, ...
-                    'Color', [color 0.7], 'LineWidth', 0.7);
+                    'Color', [color 1], 'LineWidth', 1);
             end
 
             hold off;
             disp(strcat("plot odor ", odorID, " done"))
+
+            % Plot aesthetics            
+            axis([xmin xmax ymin ymax])
+            if olfactory_task == "passive_odor_presentations"
+                set(gcf, 'OuterPosition', [100 100 1600 400]);
+            else 
+                set(gcf, 'OuterPosition', [100 100 1600 900]);
+            end
+            set(gca, 'LineWidth', 0.75);
+            set(gca, 'FontName', 'Arial');
+            set(findall(gcf,'-property','FontSize'),'FontSize',12)
+            title(strcat(odorFieldName, '_', programType), ...
+                'Interpreter', 'none');
+            xlabel('Time from odor onset (s)')
+            ylabel('dF/F Z-score')
+            xticks([xmin,0,1,xmax]);
+            yticks([ymin,0,ymax]);           
         end
     end
 
@@ -780,6 +802,7 @@ for iROI = 1:nROIs
     t.Padding = 'compact';
     disp(strcat("plot roi ", num2str(iROI), " done"))
 end
+
 
 %% Save figs
 
