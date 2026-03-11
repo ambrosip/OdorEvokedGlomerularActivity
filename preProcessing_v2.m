@@ -4,7 +4,7 @@ close all
 %% USER INPUT - experiment directory and others - EDIT ME
 
 % experiment dir to be analyzed
-expDir = '/Volumes/T7 Shield/From Mac/20250303_m0041_th-gcamp/e2';
+expDir = 'M:\ImagingData\20260309\m2742\e1';
 
 % variables made to deal with problem files
 ignoreLastTrial = 0;
@@ -50,10 +50,12 @@ reddish_purple_color = [204 121 167]/255;
 % odor color-coding
 odor_ids = [1; 2; 17; 18; 19; 20;...
     21; 22; 23; 24;...
-    25; 26; 27; 28];
+    25; 26; 27; 28;...
+    3];
 color_ids = [black_color; reddish_purple_color; blue_color; sky_blue_color; vermillion_color; orange_color;...
     blue_color; sky_blue_color; vermillion_color; orange_color;...
-    blue_color; sky_blue_color; vermillion_color; orange_color];
+    blue_color; sky_blue_color; vermillion_color; orange_color;...
+    black_color];
 odor_color = table(odor_ids,color_ids,'VariableNames',{'odorID','colorID'});
 
 disp('loaded inputs')

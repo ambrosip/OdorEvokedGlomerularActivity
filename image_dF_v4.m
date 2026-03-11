@@ -26,7 +26,7 @@ min_df_color = [5 48 97] / 255;
 
 % Plot one figure for each program and odor combination or plot only hits
 % for all programs and odors in a single figure?
-plotOnlyHits = true;
+plotOnlyHits = false;
 
 %% Extra inputs in case you run this before timeSeriesFromFijiROIs
 
@@ -111,6 +111,7 @@ for program_name = string(fieldnames(s_olfactometer))'
         figures(iFigure).type = programType;
         figures(iFigure).odor = odor;
         figures(iFigure).acquisitions = 0;
+        figures(iFigure).programNumber = programNumber;
 
         % Get table with data only for the current odor
         odorRows = summaryByTrial.odor == odor;
@@ -351,8 +352,9 @@ else
         figNameEnd = join(split(lower(figures(iFigure).type)), '_');
 
         % Join results in the correct format
-        figName = sprintf("%s_to_%s_odor_%d_%s", figNameStart, ...
-            figNameMiddle, figures(iFigure).odor, figNameEnd);
+        figName = sprintf("%s_to_%s_program_%d_odor_%d_%s", figNameStart, ...
+            figNameMiddle, figures(iFigure).programNumber, ...
+            figures(iFigure).odor, figNameEnd);
 
         fig = figure('Name', figName);
 

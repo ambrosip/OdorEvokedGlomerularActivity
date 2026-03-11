@@ -66,6 +66,7 @@ for rawImgIdx = 1:size(rawImgFileNames,1)
     currentImg_framesPerSlice = extractBetween(rawImgToAnalyze_metadata_SI,"SI.hStackManager.framesPerSlice = ",newline);
     currentImg_framesPerSlice = str2double(currentImg_framesPerSlice{1});
     rawImgFrames(rawImgIdx) = currentImg_framesPerSlice;
+    disp('processed one file')
 end
 
 rawImgStarts_min = rawImgStarts_sec/60;
