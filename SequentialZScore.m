@@ -10,14 +10,10 @@ DEPENDS on:
     mat file created by timeSeriesFromFijiROIs
     (it only uses timing information + the struct s)
 
-TO DO: 
-    - Adjust the ranges so we don't get clipping
+TO DO:
     - Highlight odor presentation intervals
-    - Remove photobleaching window
+    - Change x-axis to time (using h5 file)
 %}
-
-%% User Input
-plotRange = [-2 8];
 
 %% Compute Z-score
 
@@ -31,20 +27,26 @@ figNameStart = split(string(firstAcqName), '_');
 figNameStart = join(figNameStart(1:end-2), '_');
 
 % Get baseline
-baselineStart = round(photobleaching_window_frames);
-baselineEnd = round(odor_onset_s * frame_rate_hz);
+baselineStart = ceil(photobleaching_window_frames);
+baselineEnd = floor(odor_onset_s * frame_rate_hz);
 baselineAvgs = mean(firstSignal(baselineStart:baselineEnd, :), 1);
 
 % Initialize dFF
 nFiles = length(files);
-nFrames = length(firstSignal);
+nFrames = size(firstSignal(baselineStart:end, :), 1);
 nROIs = size(firstSignal, 2);
+
+% ALERT: We remove the photobleaching window in all acquisitions, this is
+%        why the nFrames above is not just size(firstSignal, 1).
 
 dFF(nFrames, nFiles, nROIs) = 0;
 
 % Compute dFF for all files
 for iFile = 1:nFiles
     signal = s.(files(iFile));
+
+    % Crops signal to exclude photobleaching window
+    signal = signal(baselineStart:end, :);
     
     for iROI = 1:nROIs
         dFF(:, iFile, iROI) = ...
@@ -63,6 +65,10 @@ for iROI = 1:nROIs
 end
 
 %% Plot Z-Score
+
+% Find y range by getting max and min across ROIs
+yRange = [min(zScore(:)) max(zScore(:))];
+
 xLimits = [0 nFiles*nFrames];
 
 for iROI = 1:nROIs
@@ -72,7 +78,7 @@ for iROI = 1:nROIs
     plot(signalROI(:));
 
     xlim(xLimits);
-    ylim(plotRange);
+    ylim(yRange);
 
     drawnow;
 end
