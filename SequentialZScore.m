@@ -8,11 +8,7 @@ GOAL:
 
 DEPENDS on:
     mat file created by timeSeriesFromFijiROIs
-    (it only uses timing information + the struct s)
-
-TO DO:
-    - Highlight odor presentation intervals
-    - Change x-axis to time (using h5 file)
+    (it only uses timing information + the struct s + db_trials)
 %}
 
 %% Compute Z-score
@@ -67,8 +63,22 @@ end
 %% Plot Z-Score
 
 % Find y range by getting max and min across ROIs
-yRange = [min(zScore(:)) max(zScore(:))];
-xLimits = [0 nFiles*nFrames];
+zMin = min(zScore(:));
+zMax = max(zScore(:));
+
+% Get start times for each acquisition (in minutes)
+% ALERT: since we are ignoring the photobleaching window, we have to shift
+%        the start of the plots by the window duration
+
+acqStartTimes = db_trials.trial_locs_min + photobleaching_window_s / 60;
+acqDuration = nFrames / (frame_rate_hz * 60);
+
+% Get start time for each odor presentation
+odorStartTimes = db_trials.odor_locs_min;
+
+% Compute the time range for the whole experiment
+expEnd = acqStartTimes(end) + acqDuration;
+expTimeRange = [0 expEnd];
 
 for iROI = 1:nROIs
     figName = strcat(figNameStart, '_ROI_', int2str(iROI));
@@ -79,29 +89,53 @@ for iROI = 1:nROIs
     % Plot acquisitions with different colors
     hold on;
     for iFiles = 1:nFiles
-        % Compute x range for each file
-        frameRange = (1:nFrames)' + nFrames * iFiles;
+        % Compute x range for each file (in minutes)
+        acqStart = acqStartTimes(iFiles);
+        acqEnd = acqStart + acqDuration;
         
+        timeRange = linspace(acqStart, acqEnd, nFrames);
+        timeRange = minutes(timeRange);
+
+        % Highlight odor presentation
+        odorStart = minutes(odorStartTimes(iFiles));
+        odorEnd = odorStart + minutes(odor_dur_s / 60);
+
+        patch( ...
+            [odorStart odorEnd odorEnd odorStart], ...
+            [zMin zMin zMax zMax], ...
+            [0.9 0.9 0.9], ...
+            'EdgeColor', 'none');
+        
+        % Plot files
         signalROI = zScore(:, iFiles, iROI);
-        plot(frameRange, signalROI(:));
+        plot(timeRange, signalROI(:));
+
     end
     hold off;
 
-    xlim(xLimits);
-    ylim(yRange);
+    % Set plot ranges
+    xlim(minutes(expTimeRange));
+    ylim([zMin zMax]);
+
+    % Format the x-axis to show minutes and seconds
+    xtickformat('mm:ss');
+    xlabel('Time (min:sec)')
+
+    ylabel('Z-Score for dF/F')
 
     % Distribute figures across the screen
+    % ASSUMPTION: There are less than 16 ROIs (it still works with more,
+    %             but they will be clumped in the right side of the screen)
     figWidth = 350;
     figHeight = 150;
-    vPadding = 50;
+    vPadding = 80;
     hPadding = 10;
     
     fig.Position = [ ...
         (50 + floor((iROI-1) / 4) * (figWidth + hPadding)) ...
-        (50 + mod(iROI - 1, 4) * (figHeight + vPadding)) ...
+        (20 + mod(iROI - 1, 4) * (figHeight + vPadding)) ...
         figWidth ...
-        figHeight ...
-    ];
+        figHeight];
 
     drawnow;
 end
