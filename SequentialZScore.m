@@ -68,17 +68,40 @@ end
 
 % Find y range by getting max and min across ROIs
 yRange = [min(zScore(:)) max(zScore(:))];
-
 xLimits = [0 nFiles*nFrames];
 
 for iROI = 1:nROIs
-    fig = figure('Name', strcat(figNameStart, '_ROI_', int2str(iROI)));
+    figName = strcat(figNameStart, '_ROI_', int2str(iROI));
+
+    fig = figure('Name', figName);
+    title(figName, 'Interpreter', 'none');
     
-    signalROI = zScore(:,:,iROI);
-    plot(signalROI(:));
+    % Plot acquisitions with different colors
+    hold on;
+    for iFiles = 1:nFiles
+        % Compute x range for each file
+        frameRange = (1:nFrames)' + nFrames * iFiles;
+        
+        signalROI = zScore(:, iFiles, iROI);
+        plot(frameRange, signalROI(:));
+    end
+    hold off;
 
     xlim(xLimits);
     ylim(yRange);
+
+    % Distribute figures across the screen
+    figWidth = 350;
+    figHeight = 150;
+    vPadding = 50;
+    hPadding = 10;
+    
+    fig.Position = [ ...
+        (50 + floor((iROI-1) / 4) * (figWidth + hPadding)) ...
+        (50 + mod(iROI - 1, 4) * (figHeight + vPadding)) ...
+        figWidth ...
+        figHeight ...
+    ];
 
     drawnow;
 end
