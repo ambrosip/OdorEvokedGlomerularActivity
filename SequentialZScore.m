@@ -11,6 +11,43 @@ DEPENDS on:
     (it only uses timing information + the struct s + db_trials)
 %}
 
+%% USER INPUT
+
+% Paths to the experiment folders to be included in the plots
+expFolders = [ ...
+    "/Users/priscilla/Documents/Local - Moss Lab/20251007/sid260/e1" ...
+];
+
+%% Load relevant .mat files
+
+% ASSUMPTION: Only keep the last folder for now
+for iFolder = 1:length(expFolders)
+    expFolder = expFolders(iFolder);
+
+    % Find the outputs of timeSeriesFromFijiROIs in the subfolders
+    matPaths = dir(fullfile( ...
+        expFolder, '**', '*timeSeriesFromFijiROIs.mat'));
+
+    % Check if list is empty
+    if isempty(expFolder)
+        error([ 'Did you run timeSeriesFromFijiROIs?' ...
+            'We could not find the .mat output in one of the folders.'])
+    end
+
+    % Pick the .mat file with the latest date
+    [~, maxDateIndex] = max([matPaths.datenum]);
+    matPath = matPaths(maxDateIndex);
+    matPath = fullfile(matPath.folder, matPath.name);
+
+    % Load relevant variables from .mat file
+    load(matPath, ...
+        's', 'db_trials', 'firstAcqName', ...
+        'photobleaching_window_frames', 'photobleaching_window_s', ...
+        'frame_rate_hz', 'odor_onset_s', 'odor_dur_s' ...
+    );
+end
+
+
 %% Compute Z-score
 
 % Get first file signal
