@@ -41,7 +41,7 @@ for iFolder = 1:length(expFolders)
 
     % Load relevant variables from .mat file
     load(matPath, ...
-        's', 'db_trials', 'firstAcqName', ...
+        's', 'db_trials', 'firstAcqName', 'currentImgInfo', ...
         'photobleaching_window_frames', 'photobleaching_window_s', ...
         'frame_rate_hz', 'odor_onset_s', 'odor_dur_s' ...
     );
@@ -103,15 +103,22 @@ end
 zMin = min(zScore(:));
 zMax = max(zScore(:));
 
+% Get start time for the whole experiment
+expStartStr = extractBetween( ...
+    currentImgInfo(1).ImageDescription,"epoch = [","]");
+expStart = datetime(expStartStr, 'InputFormat', 'yyyy M d H m s.SSS');
+
 % Get start times for each acquisition (in minutes)
 % ALERT: since we are ignoring the photobleaching window, we have to shift
 %        the start of the plots by the window duration
 
-acqStartTimes = db_trials.trial_locs_min + photobleaching_window_s / 60;
-acqDuration = nFrames / (frame_rate_hz * 60);
+acqStartTimes = minutes( ...
+    db_trials.trial_locs_min + photobleaching_window_s / 60);
+acqDuration = minutes(nFrames / (frame_rate_hz * 60));
 
 % Get start time for each odor presentation
-odorStartTimes = db_trials.odor_locs_min;
+odorStartTimes = minutes(db_trials.odor_locs_min);
+odorDuration = minutes(odor_dur_s / 60);
 
 % Compute the time range for the whole experiment
 expEnd = acqStartTimes(end) + acqDuration;
@@ -131,11 +138,11 @@ for iROI = 1:nROIs
         acqEnd = acqStart + acqDuration;
         
         timeRange = linspace(acqStart, acqEnd, nFrames);
-        timeRange = minutes(timeRange);
+        timeRange = timeRange;
 
         % Highlight odor presentation
-        odorStart = minutes(odorStartTimes(iFiles));
-        odorEnd = odorStart + minutes(odor_dur_s / 60);
+        odorStart = odorStartTimes(iFiles);
+        odorEnd = odorStart + odorDuration;
 
         patch( ...
             [odorStart odorEnd odorEnd odorStart], ...
@@ -151,7 +158,7 @@ for iROI = 1:nROIs
     hold off;
 
     % Set plot ranges
-    xlim(minutes(expTimeRange));
+    xlim(expTimeRange);
     ylim([zMin zMax]);
 
     % Format the x-axis to show minutes and seconds
