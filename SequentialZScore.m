@@ -20,6 +20,9 @@ expFolders = [ ...
     "/Users/priscilla/Documents/Local - Moss Lab/20251007/sid260/e2"
     ];
 
+% File extension for the plot images
+fileExtension = ".png";
+
 %% Load relevant .mat files
 
 nFolders = length(expFolders);
@@ -52,95 +55,8 @@ end
 
 %% Plot Z-Score
 
-% Find z-scores range
-zMin = Inf;
-zMax = -Inf;
-
-for data = expData
-    zMin = min(zMin, min(data.zScore(:)));
-    zMax = max(zMax, max(data.zScore(:)));
-end
-
-% Compute the time range for the plot
-
-% We shift the time range for the first experiment to start at 0.
-% ASSUMPTION: experiments are in chronological order
-
-startTime = expData(1).startTime;
-endTime = expData(end).endTime;
-plotTimeRange = [0 (endTime - startTime)];
-
-% ASSUMPTION: All experiments have the same number of ROIs
-nROIs = expData(1).nROIs;
-
-for iROI = 1:nROIs
-    % Name figure
-    figName = strcat(expData(1).name, ...
-        '_to_', expData(end).name, ...
-        '_ROI_', int2str(iROI));
-
-    fig = figure('Name', figName);
-    title(figName, 'Interpreter', 'none');
-
-    % Plot acquisitions with different colors
-    hold on;
-
-    for data = expData
-        for iFiles = 1:data.nFiles
-            % Compute x range for each file (in minutes)
-            signalStart = data.signalStartTimes(iFiles) - startTime;
-            signalEnd = signalStart + data.signalDuration;
-
-            timeRange = linspace(signalStart, signalEnd, data.nFrames);
-
-            % Highlight odor presentation
-            odorStart = data.odorStartTimes(iFiles) - startTime;
-            odorEnd = odorStart + data.odorDuration;
-
-            patch( ...
-                [odorStart odorEnd odorEnd odorStart], ...
-                [zMin zMin zMax zMax], ...
-                [0.9 0.9 0.9], ...
-                'EdgeColor', 'none');
-
-            % Plot files
-            zScoreROI = data.zScore(:, iFiles, iROI);
-            plot(timeRange, zScoreROI(:));
-
-        end
-    end
-
-    hold off;
-
-    % Set plot ranges
-    xlim(plotTimeRange);
-    ylim([zMin zMax]);
-
-    % Format the x-axis to show minutes and seconds
-    xtickformat('mm:ss');
-    xlabel('Time (min:sec)')
-
-    ylabel('Z-Score for dF/F')
-
-    % Distribute figures across the screen
-
-    % ASSUMPTION: There are less than 16 ROIs (it still works with more,
-    %             but they will be clumped in the right side of the screen)
-
-    % ALERT: ROIs are arranged from bottom to top and from left to right.
-    figWidth = 350;
-    figHeight = 150;
-    vPadding = 80;
-    hPadding = 10;
-
-    fig.Position = [ ...
-        (50 + floor((iROI-1) / 4) * (figWidth + hPadding)) ...
-        (20 + mod(iROI - 1, 4) * (figHeight + vPadding)) ...
-        figWidth ...
-        figHeight];
-
-    drawnow;
-end
+% ALERT: plotFigures is defined in the next section
+plotFigures(expData, fileExtension)
 
 %%  Auxiliary Functions
 
@@ -174,6 +90,9 @@ load(matPath, ...
 % Get experiment name (start of TIFF file names)
 nameStart = split(string(firstAcqName), '_');
 expData.name = join(nameStart(1:end-2), '_');
+
+% Store folder input
+expData.folder = expFolder;
 
 % Get first file signal
 files = string(fieldnames(s));
@@ -264,6 +183,115 @@ for iROI = 1:nROIs
     stdROI = std(dFF(:, :, iROI), 0, "all");
 
     zScore(:, :, iROI) = (dFF(:, :, iROI) - meanROI) / stdROI;
+end
+
+end
+
+function plotFigures(expData, fileExtension)
+%PLOTFIGURES Plots and saves z-scores to the first experiment folder 
+%            (i.e. EXPFOLDER/processed/matlab/DATE/*_SequentialZScore.*).
+
+% Get plots save folder
+todayStr = string(datetime('Today'), 'yyyy-MM-dd');
+saveFolder = fullfile(expData(1).folder, 'processed', 'matlab', todayStr);
+
+if ~isfolder(saveFolder)
+    mkdir(saveFolder);
+end
+
+% Find z-scores range
+zMin = Inf;
+zMax = -Inf;
+
+for data = expData
+    zMin = min(zMin, min(data.zScore(:)));
+    zMax = max(zMax, max(data.zScore(:)));
+end
+
+% Compute the time range for the plot
+
+% We shift the time range for the first experiment to start at 0.
+% ASSUMPTION: experiments are in chronological order
+
+startTime = expData(1).startTime;
+endTime = expData(end).endTime;
+plotTimeRange = [0 (endTime - startTime)];
+
+% ASSUMPTION: All experiments have the same number of ROIs
+nROIs = expData(1).nROIs;
+
+for iROI = 1:nROIs
+    % Name figure
+    figName = strcat(expData(1).name, ...
+        '_to_', expData(end).name, ...
+        '_ROI_', int2str(iROI), ...
+        '_SequentialZScore');
+
+    fig = figure('Name', figName, 'Visible', 'off');
+
+    % Create a tiledlayout to adjust padding
+    tiledlayout(1, 1, 'Padding', 'compact', 'TileSpacing', 'none');
+
+    ax = nexttile;
+    title(figName, 'Interpreter', 'none');
+
+    % Plot acquisitions with different colors
+    hold on;
+
+    for data = expData
+        for iFiles = 1:data.nFiles
+            % Compute x range for each file (in minutes)
+            signalStart = data.signalStartTimes(iFiles) - startTime;
+            signalEnd = signalStart + data.signalDuration;
+
+            timeRange = linspace(signalStart, signalEnd, data.nFrames);
+
+            % Highlight odor presentation
+            odorStart = data.odorStartTimes(iFiles) - startTime;
+            odorEnd = odorStart + data.odorDuration;
+
+            patch( ...
+                [odorStart odorEnd odorEnd odorStart], ...
+                [zMin zMin zMax zMax], ...
+                [0.9 0.9 0.9], ...
+                'EdgeColor', 'none');
+
+            % Plot files
+            zScoreROI = data.zScore(:, iFiles, iROI);
+            plot(ax, timeRange, zScoreROI(:));
+
+        end
+    end
+
+    hold off;
+
+    % Set plot ranges
+    xlim(plotTimeRange);
+    ylim([zMin zMax]);
+
+    % Format the x-axis to show minutes and seconds
+    xtickformat('mm:ss');
+    xlabel('Time (min:sec)')
+
+    ylabel('Z-Score for dF/F')
+
+    % Distribute figures across the screen
+    % The padding is kept here for debugging (figures are not visible by
+    % default). Change Visible option and remove close below to show them.
+    
+    figWidth = 1400;
+    figHeight = 300;
+    vPadding = 80;
+    hPadding = 20;
+
+    fig.Position = [ ...
+        50 ...
+        (20 + mod(iROI - 1, 4) * (figHeight + vPadding)) ...
+        figWidth ...
+        figHeight];
+
+    saveas(fig, fullfile(saveFolder, strcat(figName, fileExtension)));
+    close(fig);
 end
 
 end
