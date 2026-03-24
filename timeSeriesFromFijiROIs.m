@@ -244,7 +244,7 @@ end
 
 % get max number of odors used in this experiment
 max_odor_num = 0;
-for programNum = 1:size(programFieldNames)
+for programNum = 1:size(programFieldNames,1) % ALERT added ",1" on Mar 19 2026
     programFieldName = programFieldNames(programNum);
     if s_olfactometer.(programFieldName).type ~= "ignore"
         odor_num = size(s_olfactometer.(programFieldName).odorList,1);
@@ -268,7 +268,7 @@ for roi=1:rois_numberOf
     t = tiledlayout(rows,columns);
     title(t,figName,'Interpreter','none');
     relativeProgramNum = 0;
-    for programNum = 1:size(programFieldNames)
+    for programNum = 1:size(programFieldNames,1) % ALERT added ,1 
         programFieldName = programFieldNames(programNum);
         if s_olfactometer.(programFieldName).type ~= "ignore"
             relativeProgramNum = relativeProgramNum + 1;
