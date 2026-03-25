@@ -16,8 +16,9 @@ DEPENDS on:
 % Paths to the experiment folders to be included in the plots
 % ASSUMPTION: folders are ordered chronologically
 expFolders = [ ...
-    "/Users/priscilla/Documents/Local - Moss Lab/20251007/sid260/e1", ...
-    "/Users/priscilla/Documents/Local - Moss Lab/20251007/sid260/e2"
+    "/Volumes/MossLab/ImagingData/20260318/m2742/all/e1", ...
+    "/Volumes/MossLab/ImagingData/20260318/m2742/all/e2", ...
+    "/Volumes/MossLab/ImagingData/20260318/m2742/all/e3"
     ];
 
 % File extension for the plot images
@@ -32,7 +33,7 @@ nFolders = length(expFolders);
 
 for iFolder = 1:nFolders
     % ALERT: loadData is defined at the end of the file.
-    expData(iFolder) = loadData(expFolders(iFolder));
+    expData(iFolder) = loadData(expFolders(iFolder), iFolder);
 end
 
 
@@ -58,9 +59,102 @@ end
 % ALERT: plotFigures is defined in the next section
 plotFigures(expData, fileExtension)
 
+% Find z-scores range
+zMin = Inf;
+zMax = -Inf;
+
+for data = expData
+    zMin = min(zMin, min(data.zScore(:)));
+    zMax = max(zMax, max(data.zScore(:)));
+end
+
+zMin = -5;
+zMax = 10;
+
+% Compute the time range for the plot
+
+% We shift the time range for the first experiment to start at 0.
+% ASSUMPTION: experiments are in chronological order
+
+startTime = expData(1).startTime;
+endTime = expData(end).endTime;
+plotTimeRange = [0 (endTime - startTime)];
+
+% ASSUMPTION: All experiments have the same number of ROIs
+nROIs = expData(1).nROIs;
+
+for iROI = 1:nROIs
+    % Name figure
+    figName = strcat(expData(1).name, ...
+        '_to_', expData(end).name, ...
+        '_ROI_', int2str(iROI));
+
+    fig = figure('Name', figName);
+    title(figName, 'Interpreter', 'none');
+
+    % Plot acquisitions with different colors
+    hold on;
+
+    for data = expData
+        for iFiles = 1:data.nFiles
+            % Compute x range for each file (in minutes)
+            signalStart = data.signalStartTimes(iFiles) - startTime;
+            signalEnd = signalStart + data.signalDuration;
+
+            timeRange = linspace(signalStart, signalEnd, data.nFrames);
+
+            % Highlight odor presentation
+            odorStart = data.odorStartTimes(iFiles) - startTime;
+            odorEnd = odorStart + data.odorDuration;
+
+            patch( ...
+                [odorStart odorEnd odorEnd odorStart], ...
+                [zMin zMin zMax zMax], ...
+                [0.9 0.9 0.9], ...
+                'EdgeColor', 'none');
+
+            % Plot files
+            zScoreROI = data.zScore(:, iFiles, iROI);
+            plot(timeRange, zScoreROI(:));
+
+        end
+    end
+
+    hold off;
+
+    % Set plot ranges
+    xlim(plotTimeRange);
+    ylim([zMin zMax]);
+
+    % Format the x-axis to show minutes and seconds
+    xtickformat('mm:ss');
+    xlabel('Time (min:sec)')
+
+    ylabel('Z-Score for dF/F')
+
+    % Distribute figures across the screen
+
+    % ASSUMPTION: There are less than 16 ROIs (it still works with more,
+    %             but they will be clumped in the right side of the screen)
+
+    % ALERT: ROIs are arranged from bottom to top and from left to right.
+    figWidth = 1350;
+    figHeight = 150;
+    vPadding = 80;
+    hPadding = 10;
+
+    fig.Position = [ ...
+        10 ...
+        (20 + mod(iROI - 1, 4) * (figHeight + vPadding)) ...
+        figWidth ...
+        figHeight];
+
+    drawnow;
+end
+
 %%  Auxiliary Functions
 
-function expData = loadData(expFolder)
+function expData = loadData(expFolder, i)
 % LOADDATA Load and compute all data needed to compute the z-score
 
 % Find the outputs of the timeSeriesFromFijiROIs script
@@ -80,9 +174,13 @@ matPath = matPaths(maxDateIndex);
 matPath = fullfile(matPath.folder, matPath.name);
 
 % Load relevant variables from .mat file
+% load(matPath, ...
+%     's', 'db_trials', 'firstAcqName', 'currentImgInfo', ...
+%     'photobleaching_window_frames', 'photobleaching_window_s', ...
+%     'frame_rate_hz', 'odor_onset_s', 'odor_dur_s');  % ALERT ALERT ALERT
 load(matPath, ...
-    's', 'db_trials', 'firstAcqName', 'currentImgInfo', ...
-    'photobleaching_window_frames', 'photobleaching_window_s', ...
+    'fileSignals', 'db_trials', 'firstAcqName', 'currentImgInfo', ...
+    'photobleaching_window_s', ...
     'frame_rate_hz', 'odor_onset_s', 'odor_dur_s');
 
 % Create output struct
@@ -95,12 +193,15 @@ expData.name = join(nameStart(1:end-2), '_');
 expData.folder = expFolder;
 
 % Get first file signal
-files = string(fieldnames(s));
+% files = string(fieldnames(s)); ALERT ALERT ALERT
+files = string(fieldnames(fileSignals));
 firstFile = files(1);
-firstSignal = s.(firstFile);
+% firstSignal = s.(firstFile); ALERT ALERT ALERT
+firstSignal = fileSignals.(firstFile);
+
 
 % Get baseline
-baselineStart = ceil(photobleaching_window_frames);
+baselineStart = ceil(photobleaching_window_s * frame_rate_hz);
 baselineEnd = floor(odor_onset_s * frame_rate_hz);
 expData.baselineAvgs = ...
     mean(firstSignal(baselineStart:baselineEnd, :), 1);
@@ -118,7 +219,8 @@ expData.signals(expData.nFrames, expData.nFiles, expData.nROIs) = 0;
 
 for iFile = 1:expData.nFiles
     % Get signal from the stored data
-    signal = s.(files(iFile));
+    % signal = s.(files(iFile)); ALERT ALERT ALERT
+    signal = fileSignals.(files(iFile));
 
     % Crops signal to exclude photobleaching window
     signal = signal(baselineStart:end, :);
@@ -133,7 +235,8 @@ end
 startTimeStr = extractBetween( ...
     currentImgInfo(1).ImageDescription,"epoch = [","]");
 expData.startTime = ...
-    datetime(startTimeStr, 'InputFormat', 'yyyy M d H m s.SSS');
+    % datetime(startTimeStr, 'InputFormat', 'yyyy M d H m s.SSS');
+    datetime(startTimeStr, 'InputFormat', 'yyyy M d H m s.SSS') + minutes(i*40); % ALERT ALERT ALERT
 
 % Get start/end times for each acquisition (in minutes)
 expData.signalStartTimes = expData.startTime + minutes( ...
@@ -187,6 +290,7 @@ end
 
 end
 
+
 function plotFigures(expData, fileExtension)
 %PLOTFIGURES Plots and saves z-scores to the first experiment folder 
 %            (i.e. EXPFOLDER/processed/matlab/DATE/*_SequentialZScore.*).
@@ -207,6 +311,22 @@ for data = expData
     zMin = min(zMin, min(data.zScore(:)));
     zMax = max(zMax, max(data.zScore(:)));
 end
+
+
+%% Plot dFF
+
+% Find z-scores range
+dFFMin = Inf;
+dFFMax = -Inf;
+
+for data = expData
+    dFFMin = min(dFFMin, min(data.dFF(:)));
+    dFFMax = max(dFFMax, max(data.dFF(:)));
+end
+
+% dFFMin = -5;
+% dFFMax = 10;
+
 
 % Compute the time range for the plot
 
@@ -233,6 +353,12 @@ for iROI = 1:nROIs
     tiledlayout(1, 1, 'Padding', 'compact', 'TileSpacing', 'none');
 
     ax = nexttile;
+
+        '_ROI_', int2str(iROI),...
+        '_dFF');
+
+    fig = figure('Name', figName);
+
     title(figName, 'Interpreter', 'none');
 
     % Plot acquisitions with different colors
@@ -253,12 +379,15 @@ for iROI = 1:nROIs
             patch( ...
                 [odorStart odorEnd odorEnd odorStart], ...
                 [zMin zMin zMax zMax], ...
+                [dFFMin dFFMin dFFMax dFFMax], ...
                 [0.9 0.9 0.9], ...
                 'EdgeColor', 'none');
 
             % Plot files
             zScoreROI = data.zScore(:, iFiles, iROI);
             plot(ax, timeRange, zScoreROI(:));
+            dFFROI = data.dFF(:, iFiles, iROI);
+            plot(timeRange, dFFROI(:));
 
         end
     end
@@ -268,6 +397,7 @@ for iROI = 1:nROIs
     % Set plot ranges
     xlim(plotTimeRange);
     ylim([zMin zMax]);
+    ylim([dFFMin dFFMax]);
 
     % Format the x-axis to show minutes and seconds
     xtickformat('mm:ss');
@@ -286,12 +416,36 @@ for iROI = 1:nROIs
 
     fig.Position = [ ...
         50 ...
+    ylabel('dF/F')
+
+    % Distribute figures across the screen
+
+    % ASSUMPTION: There are less than 16 ROIs (it still works with more,
+    %             but they will be clumped in the right side of the screen)
+
+    % ALERT: ROIs are arranged from bottom to top and from left to right.
+    figWidth = 1350;
+    figHeight = 150;
+    vPadding = 80;
+    hPadding = 10;
+
+    fig.Position = [ ...
+        10 ...
         (20 + mod(iROI - 1, 4) * (figHeight + vPadding)) ...
         figWidth ...
         figHeight];
-
     saveas(fig, fullfile(saveFolder, strcat(figName, fileExtension)));
     close(fig);
 end
 
 end
+    drawnow;
+end
+
+
+%% Save workspace
+
+% save workspace variables
+matFileName = strcat(expData(1).name, "_to_", expData(end).name,'_sequential');
+save(fullfile(saveDir,matFileName));     
+disp('saved mat file')
