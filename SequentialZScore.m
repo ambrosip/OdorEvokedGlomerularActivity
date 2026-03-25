@@ -20,7 +20,17 @@ expFolders = [ ...
     ];
 
 % File extension for the plot images
-fileExtension = ".png";
+fileExtension = ".svg";
+
+% Ranges of y-axis for z-scores or dF/F plots
+% Leave it as [Inf -Inf] for automatic range
+dFFRange = [Inf -Inf];
+zScoreRange = [-5 10];
+
+% Save figures in saveDir or not?
+% If false, it will save figure in:
+%   EXPFOLDER/processed/matlab/SCRIPT_RUN_DATE
+useSaveDir = false;
 
 %% Load relevant .mat files
 
@@ -54,8 +64,20 @@ end
 
 %% Plot Z-Score
 
-% ALERT: plotFigures is defined in the next section
-plotFigures(expData, fileExtension)
+% ALERT: 1) saves a mat file with data used in the figure
+%        2) plotFigures is defined in the next section
+
+if useSaveDir
+    saveFolder = saveDir;
+else
+    saveFolder = '';
+end
+
+% Just some padding
+fprintf('\n');
+
+plotFigures(expData, fileExtension, 'dFF', dFFRange, saveFolder);
+plotFigures(expData, fileExtension, 'zScore', zScoreRange, saveFolder);
 
 %%  Auxiliary Functions
 
@@ -82,7 +104,7 @@ matPath = fullfile(matPath.folder, matPath.name);
 load(matPath, ...
     's', 'db_trials', 'firstAcqName', 'currentImgInfo', ...
     'photobleaching_window_frames', 'photobleaching_window_s', ...
-    'frame_rate_hz', 'odor_onset_s', 'odor_dur_s', 'saveDir'); 
+    'frame_rate_hz', 'odor_onset_s', 'odor_dur_s', 'saveDir');
 % load(matPath, ...
 %     'fileSignals', 'db_trials', 'firstAcqName', 'currentImgInfo', ...
 %     'photobleaching_window_s', ...
@@ -98,10 +120,10 @@ expData.name = join(nameStart(1:end-2), '_');
 expData.folder = expFolder;
 
 % Get first file signal
-files = string(fieldnames(s)); 
+files = string(fieldnames(s));
 % files = string(fieldnames(fileSignals)); % ALERT ALERT ALERT
 firstFile = files(1);
-firstSignal = s.(firstFile); 
+firstSignal = s.(firstFile);
 % firstSignal = fileSignals.(firstFile); % ALERT ALERT ALERT
 
 
@@ -124,7 +146,7 @@ expData.signals(expData.nFrames, expData.nFiles, expData.nROIs) = 0;
 
 for iFile = 1:expData.nFiles
     % Get signal from the stored data
-    signal = s.(files(iFile)); 
+    signal = s.(files(iFile));
     % signal = fileSignals.(files(iFile)); % ALERT ALERT ALERT
 
     % Crops signal to exclude photobleaching window
@@ -195,128 +217,53 @@ end
 
 end
 
+function plotFigures(expData, fileExtension, ...
+                                  plotType, yRange, saveFolder)
+% PLOTFIGURES Plots and saves dF/F or z-scores to the saveFolder
+% (default is EXPFOLDER/processed/matlab/DATE).
+%
+% Input Arguments
+%   plotType - Choose whether to plot dF/F or z-scores
+%       string 'dFF' | string 'zScore'
 
-function plotFigures(expData, fileExtension)
-%PLOTFIGURES Plots and saves z-scores to the first experiment folder 
-%            (i.e. EXPFOLDER/processed/matlab/DATE/*_SequentialZScore.*).
+arguments
+    expData
+    fileExtension {mustBeTextScalar}
+    plotType (1,1) string {mustBeMember(plotType, ["dFF", "zScore"])}
+    yRange (2,1) double = [Inf -Inf]
+    saveFolder {mustBeTextScalar} = ""
+end
 
-% Get plots save folder
-todayStr = string(datetime('Today'), 'yyyy-MM-dd');
-saveFolder = fullfile(expData(1).folder, 'processed', 'matlab', todayStr);
+% Get plots save folder (if not supplied)
+if strlength(saveFolder) == 0
+    todayStr = string(datetime('Today'), 'yyyy-MM-dd');
+    saveFolder = fullfile(expData(1).folder, ...
+        'processed', 'matlab', todayStr);
+end
+
+fprintf(' Plotting %s figures\n', plotType);
+fprintf('   Saving figures as %s\n', fileExtension);
+fprintf('   Save folder:\n')
+fprintf('     %s\n', saveFolder);
 
 if ~isfolder(saveFolder)
     mkdir(saveFolder);
 end
 
-% Find z-scores range
-zMin = Inf;
-zMax = -Inf;
-
-for data = expData
-    zMin = min(zMin, min(data.zScore(:)));
-    zMax = max(zMax, max(data.zScore(:)));
-end
-
-zMin = -5;
-zMax = 10;
-
-% Compute the time range for the plot
-
-% We shift the time range for the first experiment to start at 0.
-% ASSUMPTION: experiments are in chronological order
-
-startTime = expData(1).startTime;
-endTime = expData(end).endTime;
-plotTimeRange = [0 (endTime - startTime)];
-
-% ASSUMPTION: All experiments have the same number of ROIs
-nROIs = expData(1).nROIs;
-
-for iROI = 1:nROIs
-    % Name figure
-    figName = strcat(expData(1).name, ...
-        '_to_', expData(end).name, ...
-        '_ROI_', int2str(iROI), ...
-        '_SequentialZScore_zScore');
-
-    fig = figure('Name', figName);
-    title(figName, 'Interpreter', 'none');
-
-    % Plot acquisitions with different colors
-    hold on;
+% Find range of y values, if not supplied
+% Otherwise use the supplied values
+if yRange(1) > yRange(2)
+    yMin = Inf;
+    yMax = -Inf;
 
     for data = expData
-        for iFiles = 1:data.nFiles
-            % Compute x range for each file (in minutes)
-            signalStart = data.signalStartTimes(iFiles) - startTime;
-            signalEnd = signalStart + data.signalDuration;
-
-            timeRange = linspace(signalStart, signalEnd, data.nFrames);
-
-            % Highlight odor presentation
-            odorStart = data.odorStartTimes(iFiles) - startTime;
-            odorEnd = odorStart + data.odorDuration;
-
-            patch( ...
-                [odorStart odorEnd odorEnd odorStart], ...
-                [zMin zMin zMax zMax], ...
-                [0.9 0.9 0.9], ...
-                'EdgeColor', 'none');
-
-            % Plot files
-            zScoreROI = data.zScore(:, iFiles, iROI);
-            plot(timeRange, zScoreROI(:));
-
-        end
+        yMin = min(yMin, min(data.(plotType)(:)));
+        yMax = max(yMax, max(data.(plotType)(:)));
     end
-
-    hold off;
-
-    % Set plot ranges
-    xlim(plotTimeRange);
-    ylim([zMin zMax]);
-
-    % Format the x-axis to show minutes and seconds
-    xtickformat('mm:ss');
-    xlabel('Time (min:sec)')
-
-    ylabel('Z-Score for dF/F')
-
-    % Distribute figures across the screen
-
-    % ASSUMPTION: There are less than 16 ROIs (it still works with more,
-    %             but they will be clumped in the right side of the screen)
-
-    % ALERT: ROIs are arranged from bottom to top and from left to right.
-    figWidth = 1350;
-    figHeight = 150;
-    vPadding = 80;
-    hPadding = 10;
-
-    fig.Position = [ ...
-        10 ...
-        (20 + mod(iROI - 1, 4) * (figHeight + vPadding)) ...
-        figWidth ...
-        figHeight];
-
-    drawnow;
+else
+    yMin = yRange(1);
+    yMax = yRange(2);
 end
-end
-
-%% Plot dFF
-
-% Find dFF range
-dFFMin = Inf;
-dFFMax = -Inf;
-
-for data = expData
-    dFFMin = min(dFFMin, min(data.dFF(:)));
-    dFFMax = max(dFFMax, max(data.dFF(:)));
-end
-
-% dFFMin = -5;
-% dFFMax = 10;
-
 
 % Compute the time range for the plot
 
@@ -335,20 +282,9 @@ for iROI = 1:nROIs
     figName = strcat(expData(1).name, ...
         '_to_', expData(end).name, ...
         '_ROI_', int2str(iROI), ...
-        '_SequentialZScore_dFF');
+        '_SequentialZScore_', plotType);
 
     fig = figure('Name', figName, 'Visible', 'off');
-
-    % Create a tiledlayout to adjust padding
-    tiledlayout(1, 1, 'Padding', 'compact', 'TileSpacing', 'none');
-
-    ax = nexttile;
-
-        % '_ROI_', int2str(iROI),...
-        % '_dFF');
-
-    fig = figure('Name', figName);
-
     title(figName, 'Interpreter', 'none');
 
     % Plot acquisitions with different colors
@@ -368,13 +304,13 @@ for iROI = 1:nROIs
 
             patch( ...
                 [odorStart odorEnd odorEnd odorStart], ...
-                [dFFMin dFFMin dFFMax dFFMax], ...
+                [yMin yMin yMax yMax], ...
                 [0.9 0.9 0.9], ...
                 'EdgeColor', 'none');
 
             % Plot files
-            dFFROI = data.dFF(:, iFiles, iROI);
-            plot(timeRange, dFFROI(:));
+            yROI = data.(plotType)(:, iFiles, iROI);
+            plot(timeRange, yROI(:));
 
         end
     end
@@ -383,25 +319,18 @@ for iROI = 1:nROIs
 
     % Set plot ranges
     xlim(plotTimeRange);
-    ylim([dFFMin dFFMax]);
+    ylim([yMin yMax]);
 
     % Format the x-axis to show minutes and seconds
     xtickformat('mm:ss');
     xlabel('Time (min:sec)')
-    ylabel('dF/F')
 
-    % % Distribute figures across the screen
-    % % The padding is kept here for debugging (figures are not visible by
-    % % default). Change Visible option and remove close below to show them.
-    % 
-    % figWidth = 1400;
-    % figHeight = 300;
-    % vPadding = 80;
-    % hPadding = 20;
-    % 
-    % fig.Position = [ ...
-    %     50 ...
-    % ylabel('dF/F')
+    % Put the appropriate y-label
+    if strcmp(plotType, 'zScore')
+        ylabel('Z-Score for dF/F')
+    elseif strcmp(plotType, 'dFF')
+        ylabel('dF/F')
+    end
 
     % Distribute figures across the screen
 
@@ -419,33 +348,21 @@ for iROI = 1:nROIs
         (20 + mod(iROI - 1, 4) * (figHeight + vPadding)) ...
         figWidth ...
         figHeight];
-    % saveas(fig, fullfile(saveFolder, strcat(figName, fileExtension)));
-    % close(fig);
-    drawnow;
+
+    saveas(fig, fullfile(saveFolder, strcat(figName, fileExtension)));
+    close(fig);
 end
-
-
-%% Save figs
-
-FigList = findobj(allchild(0), 'flat', 'Type', 'figure');
-
-% save all open figs
-for iFig = 1:length(FigList)
-    FigHandle = FigList(iFig);
-    FigName = FigList(iFig).Name;
-    set(0, 'CurrentFigure', FigHandle);
-    % forces matlab to save fig as a vector
-    FigHandle.Renderer = 'painters';
-    % actually saves a vector file
-    saveas(FigHandle, fullfile(saveDir, [FigName '.svg']));
-end
-disp('saved all figs')
-close all
-
-
-%% Save workspace
 
 % save workspace variables
-matFileName = strcat(expData(1).name, "_to_", expData(end).name,'_sequential');
-save(fullfile(saveDir,matFileName));     
-disp('saved mat file')
+matFileName = strcat(expData(1).name, "_to_", ...
+    expData(end).name,'_sequentialZScore_', plotType);
+
+fprintf(['   Saving mat file with plotFigure %s data' ...
+                            ' (not the whole workspace).\n'], plotType);
+fprintf(['   .mat file name:\n' ...
+         '     %s.mat\n'], matFileName);
+fprintf( '\n');
+
+save(fullfile(saveFolder, matFileName));
+
+end
