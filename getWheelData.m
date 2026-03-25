@@ -144,3 +144,10 @@ for iFig = 1:length(FigList)
 end 
 disp('I saved the figs')
 close all
+
+
+%%
+% save workspace variables
+matFileName = strcat(analysisDate, '_pilot_wheel');
+save(fullfile(saveDir,matFileName));     
+disp('I saved the mat file')
