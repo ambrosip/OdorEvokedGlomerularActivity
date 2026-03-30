@@ -94,6 +94,10 @@ odor_offset_s = odor_onset_s + odor_dur_s;
 disp('calculated baseline')
 
 
+%%
+getWheelData
+
+
 %% FIG 2 - OLFACTOMETER ODOR PRESENTATIONS RASTER
 
 fig2 = figure('name', strcat(s_olfactometer.program_1.shortName, '_', analysisDate, ' - raster'));
