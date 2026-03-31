@@ -7,98 +7,96 @@
 
 %% USER INPUT
 
+% Range for the z-score plots
 plotRange = [-5, 5];
 
-%% Plot ROIs for debugging
+% Lower threshold to exclude from the z-score mask
+lowerThreshold = 1.0;
 
-totalMask = zeros(size(figures(1).na.image));
+% Disks for erosion and dilation
+erosionDisk = strel("disk", 5);
+dilationDisk = strel("disk", 5);
+
+%% Generating Mask
+
+fig = figure('Name', 'Z-Score Mask Steps');
+tl = tiledlayout(2,3);
+
+minEnvelope = zeros(size(figures(1).na.image));
+maxEnvelope = zeros(size(figures(1).na.image));
+
+maxBlur = zeros(size(figures(1).na.image));
 
 for iFigure = 1:length(figures)
-    fprintf("Plotting figure %d\n", iFigure);
-    zScore = figures(iFigure).na.image;
-    
-    % Clamp before median filtering
-    zScoreClamped = zScore;
-    zScoreClamped(zScore >  4) =  4;
-    zScoreClamped(zScore < -4) = -4;
-    
-    zScoreClamped(abs(zScore) < 1.2) = 0.0;
-    
-    % Median filter with disk region
-    filterDiskMask = getnhood(strel("disk", 4));
-    medianPos = (prod(size(filterDiskMask)) - 1) / 2;
-    zScoreFiltered = ordfilt2(zScoreClamped, medianPos, filterDiskMask);
-    
-    smallDisk = strel("disk", 5);
-    largeDisk = strel("disk", 8);
-    
-    mask = abs(zScoreFiltered) > 1;
-    mask = imdilate(imerode(mask, smallDisk), largeDisk);
-
-    fig = figure('Name', sprintf('Odor %d NA', figures(iFigure).odor));
-    tl = tiledlayout(1, 2);
-    
-    nexttile;
-    imshow(zScore, plotRange);
-    
-    nexttile;
-    imshow(zScore, plotRange);
-    hold on;
-
-    [labeledMask, nRegions] = bwlabel(mask);    
-    labelRGB = label2rgb(labeledMask, 'jet', 'k', 'shuffle'); 
-
-    hOverlay = imshow(labelRGB);
-    alphaMap = double(labeledMask > 0) * 0.5; 
-    set(hOverlay, 'AlphaData', alphaMap);
-
-    totalMask = max(mask, totalMask);
-
-    tl.TileSpacing = 'compact';
-    tl.Padding = 'compact';
-    
-    fig.Position = [0 0 1400 1200];
-
-    cb = colorbar;
-    cb.Layout.Tile = 'south';
-
-    colormap(divergingGradient);
-    clim(plotRange);
-
-    drawnow;
+    minEnvelope = min(minEnvelope, figures(iFigure).na.image);
+    maxEnvelope = max(maxEnvelope, figures(iFigure).na.image);
+    maxBlur = max(maxBlur, abs(imgaussfilt(figures(iFigure).na.image, 3.5)));
 end
 
-[regions, nROIs] = bwlabel(totalMask);
-
-% All together
-fig = figure('Name', sprintf('All ROIs NA', figures(iFigure).odor));
-tl = tiledlayout(1, 2);
+% Plotting the z-score envelope
+zScoreEnvelope = (abs(minEnvelope) >= abs(maxEnvelope)) .* minEnvelope + ...
+        (abs(minEnvelope) < abs(maxEnvelope)) .* maxEnvelope;
 
 nexttile;
-imshow(zScore, plotRange);
-
-nexttile;
-imshow(zScore, plotRange);
-hold on;
-    
-labelRGB = label2rgb(regions, 'jet', 'k', 'shuffle'); 
-
-hOverlay = imshow(labelRGB);
-alphaMap = double(regions > 0) * 0.5; 
-set(hOverlay, 'AlphaData', alphaMap);
-
-tl.TileSpacing = 'compact';
-tl.Padding = 'compact';
-
-fig.Position = [0 0 1400 1200];
-
-cb = colorbar;
-cb.Layout.Tile = 'south';
-
+imshow(zScoreEnvelope, plotRange);
 colormap(divergingGradient);
-clim(plotRange);
 
-drawnow;
+% Lower threshold for z-score
+ROI = abs(maxBlur) > lowerThreshold;
+
+nexttile;
+imshow(maxBlur, plotRange);
+colormap(divergingGradient);
+
+% Distance from boundary
+distanceMask = - bwdist(~ROI);
+
+% Make regions more smooth to split less
+smoothedMask = medfilt2(distanceMask);
+
+nexttile;
+imshow(smoothedMask, []);
+
+% Split regions
+splitMask = watershed(smoothedMask, 4);
+splitMask(~ROI) = 0.0;
+
+% Color regions independently
+splitMaskRGB = label2rgb(splitMask,'jet', [.5, .5, .5], 'shuffle');
+
+nexttile;
+imshow(splitMaskRGB);
+
+% Make regions rounder
+erodedMask = imerode(splitMask, erosionDisk);
+dilatedMask = imdilate(erodedMask, dilationDisk);
+
+% Plot eroded
+nexttile;
+imshow(erodedMask, []);
+
+% Plot final result with initial blurred max projection
+nexttile;
+imshow(maxBlur, plotRange);
+colormap(divergingGradient);
+
+hold on;
+finalMaskRGB = label2rgb(dilatedMask, 'jet', 'k', 'shuffle'); 
+
+hOverlay = imshow(finalMaskRGB);
+alphaMap = double(dilatedMask > 0) * 0.5; 
+set(hOverlay, 'AlphaData', alphaMap);
+hold off;
+
+% Fix spacing
+tl.TileSpacing = 'tight';
+tl.Padding = 'tight';
+
+fig.Position = [30 30 1450 800];
+
+% Rearrange regions numbers to make sequential
+% TODO: do this in a more efficient way
+[finalMask, nROIs] = bwlabel(dilatedMask > 0);
 
 % ADAPTED FROM TimeSeriesFromFijiROIsZscores (TODO: CLEAN UP)
 %% Get fluorescence in fiji ROIs for each file/acquisition
@@ -166,7 +164,7 @@ for file = 1:imgsToAnalyze_numberOf
     
         % iterate ROI by ROI
         for roiNumber = 1:nROIs
-            labeledRoi = regions == roiNumber;
+            labeledRoi = finalMask == roiNumber;
             % figure; imshow(labeledRoi) % use this to troubleshoot 
             nPixelsInRoi = sum(labeledRoi,'all');
             % labeledRoiAsInt16 = int16(labeledRoi);
@@ -266,7 +264,7 @@ end
 
 % iterate through rois
 ignoredPrograms = size(programFieldNames,1) - programsToAnalyze;
-labelRGB = label2rgb(regions, 'jet', 'k', 'shuffle'); 
+labelRGB = label2rgb(finalMask, 'jet', 'k', 'shuffle'); 
 
 for roi=1:nROIs
     figName = strcat(firstAcqName(2:end), '_to_', lastAcqName(2:end), '_roi_', num2str(roi), '_dF');
@@ -324,7 +322,7 @@ for roi=1:nROIs
     hold on
 
     hOverlay = imshow(labelRGB);
-    alphaMap = double(regions == roi) * 0.5; 
+    alphaMap = double(finalMask == roi) * 0.5; 
     set(hOverlay, 'AlphaData', alphaMap);
 
     hold off  
