@@ -17,6 +17,21 @@ lowerThreshold = 1.0;
 erosionDisk = strel("disk", 5);
 dilationDisk = strel("disk", 5);
 
+% if using mcor files from odyn (caiman python)
+convertFrom32bit = true;
+
+saveFigs = 1;
+
+
+%% Make z-proj of 1st mcor file for ROI labeling
+
+filename = imgsToAnalyzeDirs(1).name;
+fileDir = imgsToAnalyzeDirs(1).folder;
+filepath = fullfile(fileDir, filename);
+imgToProject = imread(filepath);
+avgProjection = mean(imgToProject, 3);
+
+
 %% Generating Mask
 
 fig = figure('Name', 'Z-Score Mask Steps');
@@ -312,10 +327,10 @@ for roi=1:nROIs
     % show ROI location
     nexttile(columns,[max_odor_num,1])
     if convertFrom32bit
-        zProjFileToAnalyze = cast(zProjFileToAnalyze,'uint16');
-        imshow(imadjust(zProjFileToAnalyze))
+        avgProjection = cast(avgProjection,'uint16');
+        imshow(imadjust(avgProjection))
     else
-        imshow(imadjust(zProjFileToAnalyze,[0.5 0.65])) 
+        imshow(imadjust(avgProjection,[0.5 0.65])) 
     end
 
 
