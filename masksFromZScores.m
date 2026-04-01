@@ -382,3 +382,10 @@ if saveFigs
     disp('saved all figs')
     close all
 end
+
+
+%% Save workspace variables
+
+matFileName = strcat(todayStr, '_masksFromZScores');
+save(fullfile(saveFolder,matFileName));     
+disp('I saved the mat file')
