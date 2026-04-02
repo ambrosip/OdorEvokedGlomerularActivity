@@ -27,7 +27,7 @@ DEPENDS on:
 %% USER INPUT
 
 % Experiment folder
-expFolder = "/Users/Shared/odyn-test-files/20251007/sid260/e1/";
+expFolder = "M:\ImagingData\20260309\m357";
 
 % Define the colors
 max_df_color = [103 0 31] / 255;
@@ -127,6 +127,7 @@ for program_name = string(fieldnames(s_olfactometer))'
         iMovie = iMovie + 1;
 
         % Add movie to list of movies
+        zScoreMovies(iMovie).program = program_name;
         zScoreMovies(iMovie).type = programType;
         zScoreMovies(iMovie).odor = odor;
         zScoreMovies(iMovie).acquisitions = 0;
@@ -250,7 +251,8 @@ for iMovie = 1:nMovies
         end
 
         videoName = sprintf( ...
-            "zScoreMovie_program_%s_odor_%d_outcome_%s.avi", ...
+            "zScoreMovie_%s_%s_odor_%d_outcome_%s.avi", ...
+            zScoreMovies(iMovie).program, ...
             zScoreMovies(iMovie).type, ...
             zScoreMovies(iMovie).odor, ...
             outcome);
