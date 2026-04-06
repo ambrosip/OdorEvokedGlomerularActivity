@@ -1,20 +1,5 @@
 % getImgDirs
 
-% get today's date
-analysisDate =  datestr(datetime('today'),'yyyy-mm-dd');
-
-% get img dirs
-mcorImgDir = fullfile(expDir,'processed','mcor');
-rawImgDir = fullfile(expDir,'raw');
-
-% create save dir if needed
-saveDir = fullfile(expDir,'processed','matlab',analysisDate);
-% check if saveDir exists
-if not(isfolder(saveDir))
-    % create saveDir
-    mkdir(saveDir);
-end
-
 % analyze motion corrected (mcor) data or raw data based on user input
 if analyzeMcorImgs == 1
     % get all tif file names in mcorImgDir

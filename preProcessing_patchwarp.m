@@ -9,9 +9,6 @@ expDir = '/Volumes/MossLab/ImagingData/20260320/m310/e1';
 % variables made to deal with problem files
 ignoreLastTrial = 0;
 
-% to analyze patchwarp mcor output
-patchwarp = 1;
-
 % set img-specific inputs
 photobleaching_window_s = 2; % duration of data in senconds that will be removed from baseline to account for photobleaching
 analyzeMcorImgs = 1; % 0 (no) or 1 (yes)
@@ -76,6 +73,7 @@ if exist('patchwarp','var')
 else
     getFileDirs
 end
+
 %%
 getImgMetadata
 %%

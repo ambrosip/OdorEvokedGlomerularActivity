@@ -25,6 +25,7 @@ saveFigs = 1;
 
 %% Make z-proj of 1st mcor file for ROI labeling
 
+getFileDirs
 getImgDirs
 
 filename = imgsToAnalyzeDirs(1).name;
