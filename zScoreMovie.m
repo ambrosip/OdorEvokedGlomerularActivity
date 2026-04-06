@@ -27,7 +27,7 @@ DEPENDS on:
 %% USER INPUT
 
 % Experiment folder
-expFolder = "M:\ImagingData\20260309\m357";
+expFolder = "M:\ImagingData\20260306\m2742\e3";
 
 % Define the colors
 max_df_color = [103 0 31] / 255;

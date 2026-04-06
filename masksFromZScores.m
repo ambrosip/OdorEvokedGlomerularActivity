@@ -356,6 +356,27 @@ end
 
 disp("plot done")
 
+
+%% Show ROIS
+
+
+figName = strcat(firstAcqName(2:end), '_to_', lastAcqName(2:end), '_rois');
+fig = figure('Name',figName);
+
+if convertFrom32bit
+    avgProjection = cast(avgProjection,'uint16');
+    imshow(imadjust(avgProjection))
+else
+    imshow(imadjust(avgProjection,[0.5 0.65])) 
+end
+hold on;
+finalMaskRGB = label2rgb(dilatedMask, 'jet', 'k', 'shuffle'); 
+hOverlay = imshow(finalMaskRGB);
+alphaMap = double(dilatedMask > 0) * 0.5; 
+set(hOverlay, 'AlphaData', alphaMap);
+hold off;
+
+
 %% Save Figures
 
 todayStr = string(datetime('Today'), 'yyyy-MM-dd');
