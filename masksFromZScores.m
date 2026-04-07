@@ -22,6 +22,10 @@ convertFrom32bit = true;
 
 saveFigs = 1;
 
+yLimManual = 1;
+ymin = -0.2;
+ymax = 0.2;
+
 
 %% Make z-proj of 1st mcor file for ROI labeling
 
@@ -154,20 +158,46 @@ for file = 1:imgsToAnalyze_numberOf
         % wider than the int16 range. To deal with all of these files
         % without improperly compressing the data (e.g. the function cast
         % does NOT work properly to convert int32 to uint16), I decided to
-        % simply shift the dataset to the right by subtracting the min
-        % value if it's below zero. If the min value is above zero, we do
-        % nothing, because we don't have negative values to worry about. In
-        % sum, regardless of bit depth, we will make sure that the lower 
-        % range of values is >= zero. FYI, imread saves data as double.
+        % simply shift the dataset to the right by adding 32768 (the
+        % min int16 value) and then convert it to single.
+        % FYI, imread saves data as double.
         imgToAnalyze = imread(imgToAnalyzeFileDir,frame);
+        imgToAnalyze = imgToAnalyze + 32768;
+        imgToAnalyze = single(imgToAnalyze);
 
-        % ------------- COMMENTED OUT FOR TESTING --------------------- %
-        % Make sure that all entries of imgToAnalize are >= zero
+        % ------------- PROBLEMATIC CODE - DO NOT USE ----------------- %
+        % % why problematic? removes different values from different
+        % frames!!! The better alternative is to remove the SAME VALUE from
+        % all the frames
+        %
+        % % old explanation
+        % % Raw files from scanimage and mcor files from the matlab motion
+        % % correction script are stored as int16 (signed 16-bit integer,
+        % % with values ranging from -32768 to 32767). To avoid errors with
+        % % dF/F calculation due to negative values, I used to convert these
+        % % files to uint16 (unsigned 16-bit integer, with values ranging
+        % % from 0 to 65535). To allow further processing, I then converted
+        % % the numbers to single (similar to double, but with less precision). 
+        % % Mcor files from the python script are stored as int32 (signed
+        % % 32-bit integer, with values ranging from -2,147,483,648 to
+        % % 2,147,483,647), but the actual range of the data is just a bit
+        % % wider than the int16 range. To deal with all of these files
+        % % without improperly compressing the data (e.g. the function cast
+        % % does NOT work properly to convert int32 to uint16), I decided to
+        % % simply shift the dataset to the right by subtracting the min
+        % % value if it's below zero. If the min value is above zero, we do
+        % % nothing, because we don't have negative values to worry about. In
+        % % sum, regardless of bit depth, we will make sure that the lower 
+        % % range of values is >= zero. FYI, imread saves data as double.
+        % 
+        % % Make sure that all entries of imgToAnalize are >= zero
         % if min(imgToAnalyze, [], 'all') < 0
         %     imgToAnalyze = imgToAnalyze - min(imgToAnalyze, [], 'all');
         % end
         % ------------------------------------------------------------- %
 
+        % ------------- PROBLEMATIC CODE - DO NOT USE ----------------- %
+        % % why problematic? DOES NOT WORK
         % % old code, kept for archiving purposes
         % % deal with 32-bit files - this does NOT WORK - DO NOT USE
         % if convertFrom32bit
@@ -176,9 +206,8 @@ for file = 1:imgsToAnalyze_numberOf
         % 
         % % convert img to uint16 (range: 0 to 65535)
         % imgToAnalyze = im2uint16(imgToAnalyze);
-        
-        % convert img to single
-        imgToAnalyze = single(imgToAnalyze);
+
+        % ------------------------------------------------------------- %
     
         % iterate ROI by ROI
         for roiNumber = 1:nROIs
@@ -246,26 +275,28 @@ disp("calculated dF/F")
 
 %% PLOT data in ROIs organized by odor (rows) and program type (columns)
 
-% get max and min value cof dF/F to set y axis limits
-% ymax = round(max(structfun(@(x) max(x,[],'all'),s_dF,'UniformOutput',true)), TieBreaker='plusinf');
-% ymin = round(min(structfun(@(x) min(x,[],'all'),s_dF,'UniformOutput',true)), TieBreaker='minusinf');
-
-% Gets the first integer below min and first above max
-ymax = ceil(max(structfun(@(x) max(x,[],'all'),s_dF,'UniformOutput',true)));
-ymin = floor(min(structfun(@(x) min(x,[],'all'),s_dF,'UniformOutput',true)));
-
-% get max and min value of xAxis to set x acis limits
-xmin = round(min(xAxisInSec),TieBreaker='minusinf');
-xmax = round(max(xAxisInSec),TieBreaker='plusinf');
-
-% adjust ymin to -0.1 in case it's zero
-if ymin == 0
-   ymin = -0.1;
-end
-
-% adjust max to +0.1 in case it's zero
-if ymax == 0
-   ymax = 0.1;
+if yLimManual == 0
+    % get max and min value cof dF/F to set y axis limits
+    ymax = round(max(structfun(@(x) max(x,[],'all'),s_dF,'UniformOutput',true)), TieBreaker='plusinf');
+    ymin = round(min(structfun(@(x) min(x,[],'all'),s_dF,'UniformOutput',true)), TieBreaker='minusinf');
+    
+    % Gets the first integer below min and first above max
+    % ymax = ceil(max(structfun(@(x) max(x,[],'all'),s_dF,'UniformOutput',true)));
+    % ymin = floor(min(structfun(@(x) min(x,[],'all'),s_dF,'UniformOutput',true)));
+    
+    % get max and min value of xAxis to set x acis limits
+    xmin = round(min(xAxisInSec),TieBreaker='minusinf');
+    xmax = round(max(xAxisInSec),TieBreaker='plusinf');
+    
+    % adjust ymin to -0.1 in case it's zero
+    if ymin == 0
+       ymin = -0.1;
+    end
+    
+    % adjust max to +0.1 in case it's zero
+    if ymax == 0
+       ymax = 0.1;
+    end
 end
 
 % get max number of odors used in this experiment
