@@ -27,7 +27,7 @@ DEPENDS on:
 %% USER INPUT
 
 % Experiment folder
-expFolder = "M:\ImagingData\20260309\m357";
+expFolder = "M:\ImagingData\20260316\m357\e1";
 
 % Define the colors
 max_df_color = [103 0 31] / 255;
@@ -151,7 +151,7 @@ for program_name = string(fieldnames(s_olfactometer))'
             acqIdx = odorTable{row, 'acqIdx'};
 
             % Skip trials without acquisition
-            if isnan(acqIdx)
+            if isnan(acqIdx) || acqIdx == 0
                 continue
             end
 
