@@ -126,7 +126,6 @@ firstFile = files(1);
 firstSignal = s.(firstFile);
 % firstSignal = fileSignals.(firstFile); % ALERT ALERT ALERT
 
-
 % Get baseline
 baselineStart = ceil(photobleaching_window_s * frame_rate_hz);
 baselineEnd = floor(odor_onset_s * frame_rate_hz);

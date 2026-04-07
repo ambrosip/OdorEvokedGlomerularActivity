@@ -113,9 +113,12 @@ for file = 1:imgsToAnalyze_numberOf
     imgInfo = imfinfo(imgToAnalyzeFileDir);
     nFrames = length(imgInfo);
 
-    % Load whole movie and shift to be positive
+    % Load whole movie and shift to be positive by adding min int16 value
     movieToAnalyze = single(tiffreadVolume(imgToAnalyzeFileDir));
-    movieToAnalyze = movieToAnalyze - min(movieToAnalyze, [], 'all');
+    movieToAnalyze = movieToAnalyze + 32768;
+    
+    % DONT TO THIS because each movie will get different treatment!!!
+    % movieToAnalyze = movieToAnalyze - min(movieToAnalyze, [], 'all');
 
     % Initialize a matrix of the correct size
     % The value 0.0 will be overwritten later

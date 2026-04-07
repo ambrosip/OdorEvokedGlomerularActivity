@@ -133,7 +133,7 @@ for program_name = string(fieldnames(s_olfactometer))'
             acqIdx = odorTable{row, 'acqIdx'};
 
             % Skip trials without acquisition
-            if isnan(acqIdx)
+            if isnan(acqIdx) || acqIdx == 0
                 continue
             end
 

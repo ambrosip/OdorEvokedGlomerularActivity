@@ -234,31 +234,34 @@ for programNum = 1:size(programFieldNames,1) % ALERT added ,1
             % find all acq idx that match this program and odor
             % the idx of odor presentation will match the acq idx
             for acqIdx = s_olfactometer.(programFieldName).summary_by_trial.acqIdx(s_olfactometer.(programFieldName).summary_by_trial.odor==str2double(odorID))'
-                odorPresentation = acqIdx; 
-                odorOnset_dp = allOdorOnsets_dp(odorPresentation);
-                windowStart_dp = odorOnset_dp - round((baseline_dur_s - photobleaching_window_s) * si);
-                windowEnd_dp = odorOnset_dp + round((odor_dur_s + baseline_dur_s - photobleaching_window_s) * si);
-                cmPerSecondPerOdor(:,odorPresentation) = cmPerSecond_smooth(windowStart_dp:windowEnd_dp);
-                odorPulsePerOdor(:,odorPresentation) = odorPulse(windowStart_dp:windowEnd_dp);
-                xAxis_sec = linspace(0 - round(baseline_dur_s - photobleaching_window_s), round(odor_dur_s + baseline_dur_s - photobleaching_window_s), windowEnd_dp-windowStart_dp+1)';
-                plot(xAxis_sec,cmPerSecondPerOdor(:,odorPresentation),'LineWidth',0.5,'Color',color)
-                hold on
-                % plot(xAxis_sec,50*odorPulsePerOdor(:,odorPresentation),'LineWidth',0.5,'Color',[1 0 0 0.5])
-
-                % detect movement during odor presentation and annotate db_trials
-                [pks,~] = findpeaks(cmPerSecond_smooth(allOdorOnsets_dp(odorPresentation):allOdorOffsets_dp(odorPresentation)),"MinPeakHeight",threshold_cmPerSec);
-                if ~isempty(pks)
-                    db_trials.mov_dur_odor(odorPresentation) = 1;
-                else
-                    db_trials.mov_dur_odor(odorPresentation) = 0;
-                end
-
-                % detect movement post odor presentation and annotate db_trials
-                [pks,~] = findpeaks(cmPerSecond_smooth(allOdorOffsets_dp(odorPresentation):round(allOdorOffsets_dp(odorPresentation)+odor_dur_s*si)),"MinPeakHeight",threshold_cmPerSec);
-                if ~isempty(pks)
-                    db_trials.mov_post_odor(odorPresentation) = 1;
-                else
-                    db_trials.mov_post_odor(odorPresentation) = 0;
+                % had to put this check to deal with problem file M:\ImagingData\20260316\m357\e1
+                if acqIdx > 0
+                    odorPresentation = acqIdx; 
+                    odorOnset_dp = allOdorOnsets_dp(odorPresentation);
+                    windowStart_dp = odorOnset_dp - round((baseline_dur_s - photobleaching_window_s) * si);
+                    windowEnd_dp = odorOnset_dp + round((odor_dur_s + baseline_dur_s - photobleaching_window_s) * si);
+                    cmPerSecondPerOdor(:,odorPresentation) = cmPerSecond_smooth(windowStart_dp:windowEnd_dp);
+                    odorPulsePerOdor(:,odorPresentation) = odorPulse(windowStart_dp:windowEnd_dp);
+                    xAxis_sec = linspace(0 - round(baseline_dur_s - photobleaching_window_s), round(odor_dur_s + baseline_dur_s - photobleaching_window_s), windowEnd_dp-windowStart_dp+1)';
+                    plot(xAxis_sec,cmPerSecondPerOdor(:,odorPresentation),'LineWidth',0.5,'Color',color)
+                    hold on
+                    % plot(xAxis_sec,50*odorPulsePerOdor(:,odorPresentation),'LineWidth',0.5,'Color',[1 0 0 0.5])
+    
+                    % detect movement during odor presentation and annotate db_trials
+                    [pks,~] = findpeaks(cmPerSecond_smooth(allOdorOnsets_dp(odorPresentation):allOdorOffsets_dp(odorPresentation)),"MinPeakHeight",threshold_cmPerSec);
+                    if ~isempty(pks)
+                        db_trials.mov_dur_odor(odorPresentation) = 1;
+                    else
+                        db_trials.mov_dur_odor(odorPresentation) = 0;
+                    end
+    
+                    % detect movement post odor presentation and annotate db_trials
+                    [pks,~] = findpeaks(cmPerSecond_smooth(allOdorOffsets_dp(odorPresentation):round(allOdorOffsets_dp(odorPresentation)+odor_dur_s*si)),"MinPeakHeight",threshold_cmPerSec);
+                    if ~isempty(pks)
+                        db_trials.mov_post_odor(odorPresentation) = 1;
+                    else
+                        db_trials.mov_post_odor(odorPresentation) = 0;
+                    end
                 end
             end
             hold off;
