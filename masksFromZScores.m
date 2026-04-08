@@ -345,7 +345,7 @@ for roi=1:nROIs
 
                 for acqIdx = s_olfactometer.(programFieldName).summary_by_trial.acqIdx(s_olfactometer.(programFieldName).summary_by_trial.odor==str2double(odorID))'
                     % plot dF/F   
-                    if ~isnan(acqIdx)
+                    if ~isnan(acqIdx) && acqIdx > 0
                         plot(xAxisInSec',s_dF.(fns{acqIdx})(:,roi),'Color',[color 0.5],'LineWidth',0.5);  
                     end
                 end
