@@ -15,8 +15,10 @@ DEPENDS on:
 
 % Paths to the experiment folders to be included in the plots
 % ASSUMPTION: folders are ordered chronologically
+% USE DOUBLE QUOTES, NOT SINGLE QUOTES
 expFolders = [ ...
-    "/Volumes/MossLab/ImagingData/20260320/m310/e1"
+    "/Users/ambrosi/Temp/m357/e1"
+    "/Users/ambrosi/Temp/m357/e2"
     ];
 
 % File extension for the plot images
@@ -85,8 +87,11 @@ function [expData, saveDir] = loadData(expFolder, i)
 % LOADDATA Load and compute all data needed to compute the z-score
 
 % Find the outputs of the timeSeriesFromFijiROIs script
+% matPaths = dir(fullfile( ...
+%     expFolder, '**', '*timeSeriesFromFijiROIs.mat'));
+
 matPaths = dir(fullfile( ...
-    expFolder, '**', '*timeSeriesFromFijiROIs.mat'));
+    expFolder, '**', '*masksFromZScores.mat'));
 
 % There must be at least one output
 if isempty(matPaths)
@@ -118,6 +123,9 @@ expData.name = join(nameStart(1:end-2), '_');
 
 % Store folder input
 expData.folder = expFolder;
+
+% Store db_trials
+expData.db_trials = db_trials;
 
 % Get first file signal
 files = string(fieldnames(s));
@@ -365,3 +373,12 @@ fprintf( '\n');
 save(fullfile(saveFolder, matFileName));
 
 end
+
+
+%%
+
+% save workspace variables
+matFileName = strcat(expData(1).name, "_to_", ...
+    expData(end).name,'_sequentialZScore');
+
+save(fullfile(saveDir, matFileName));
