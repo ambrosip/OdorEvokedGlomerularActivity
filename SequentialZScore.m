@@ -17,8 +17,7 @@ DEPENDS on:
 % ASSUMPTION: folders are ordered chronologically
 % USE DOUBLE QUOTES, NOT SINGLE QUOTES
 expFolders = [ ...
-    "/Users/ambrosi/Temp/m357/e1"
-    "/Users/ambrosi/Temp/m357/e2"
+    "M:\ImagingData\20260309\m357"
     ];
 
 % File extension for the plot images
@@ -134,9 +133,17 @@ firstFile = files(1);
 firstSignal = s.(firstFile);
 % firstSignal = fileSignals.(firstFile); % ALERT ALERT ALERT
 
-% Get baseline
+% Get important timestamps
 baselineStart = ceil(photobleaching_window_s * frame_rate_hz);
 baselineEnd = floor(odor_onset_s * frame_rate_hz);
+odorStart = ceil(odor_onset_s * frame_rate_hz);
+odorEnd = ceil((odor_onset_s + odor_dur_s) * frame_rate_hz);
+expData.baselineStart = baselineStart;
+expData.baselineEnd = baselineEnd;
+expData.odorStart = odorStart;
+expData.odorEnd = odorEnd;
+
+% get baseline
 expData.baselineAvgs = ...
     mean(firstSignal(baselineStart:baselineEnd, :), 1);
 
@@ -179,6 +186,13 @@ expData.signalDuration = minutes( ...
     expData.nFrames / (frame_rate_hz * 60));
 expData.signalEndTimes = expData.signalStartTimes + ...
     expData.signalDuration;
+
+% crop these in case you have missing acquisitions at the end, which
+% happens in file 20260316_m357_e1
+if length(expData.signalEndTimes) > expData.nFiles
+    expData.signalEndTimes = expData.signalEndTimes(1:expData.nFiles);
+    expData.signalStartTimes = expData.signalStartTimes(1:expData.nFiles);
+end
 
 % ALERT: since we are ignoring the photobleaching window, we have to
 %        shift the start of the signals by the window duration
@@ -377,8 +391,8 @@ end
 
 %%
 
-% save workspace variables
-matFileName = strcat(expData(1).name, "_to_", ...
-    expData(end).name,'_sequentialZScore');
-
-save(fullfile(saveDir, matFileName));
+% % save workspace variables
+% matFileName = strcat(expData(1).name, "_to_", ...
+%     expData(end).name,'_sequentialZScore');
+% 
+% save(fullfile(saveDir, matFileName));
