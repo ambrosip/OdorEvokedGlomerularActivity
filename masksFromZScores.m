@@ -284,10 +284,6 @@ if yLimManual == 0
     % ymax = ceil(max(structfun(@(x) max(x,[],'all'),s_dF,'UniformOutput',true)));
     % ymin = floor(min(structfun(@(x) min(x,[],'all'),s_dF,'UniformOutput',true)));
     
-    % get max and min value of xAxis to set x acis limits
-    xmin = round(min(xAxisInSec),TieBreaker='minusinf');
-    xmax = round(max(xAxisInSec),TieBreaker='plusinf');
-    
     % adjust ymin to -0.1 in case it's zero
     if ymin == 0
        ymin = -0.1;
@@ -298,6 +294,10 @@ if yLimManual == 0
        ymax = 0.1;
     end
 end
+
+% get max and min value of xAxis to set x acis limits
+xmin = round(min(xAxisInSec),TieBreaker='minusinf');
+xmax = round(max(xAxisInSec),TieBreaker='plusinf');
 
 % get max number of odors used in this experiment
 max_odor_num = 0;

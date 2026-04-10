@@ -17,7 +17,7 @@ DEPENDS on:
 % ASSUMPTION: folders are ordered chronologically
 % USE DOUBLE QUOTES, NOT SINGLE QUOTES
 expFolders = [ ...
-    "M:\ImagingData\20260309\m357"
+    "M:\ImagingData\20260311\m357"
     ];
 
 % File extension for the plot images
@@ -133,15 +133,11 @@ firstFile = files(1);
 firstSignal = s.(firstFile);
 % firstSignal = fileSignals.(firstFile); % ALERT ALERT ALERT
 
-% Get important timestamps
+% Get important "timestamps" (actually data points)
 baselineStart = ceil(photobleaching_window_s * frame_rate_hz);
 baselineEnd = floor(odor_onset_s * frame_rate_hz);
 odorStart = ceil(odor_onset_s * frame_rate_hz);
 odorEnd = ceil((odor_onset_s + odor_dur_s) * frame_rate_hz);
-expData.baselineStart = baselineStart;
-expData.baselineEnd = baselineEnd;
-expData.odorStart = odorStart;
-expData.odorEnd = odorEnd;
 
 % get baseline
 expData.baselineAvgs = ...
@@ -169,6 +165,13 @@ for iFile = 1:expData.nFiles
     % Group all signals together for easy processing
     expData.signals(:, iFile, :) = signal;
 end
+
+% correct important "timestamps" in datapoints after cropping the
+% photobleaching window
+expData.baselineStart = baselineStart - baselineStart;
+expData.baselineEnd = baselineEnd - baselineStart;
+expData.odorStart = odorStart - baselineStart;
+expData.odorEnd = odorEnd - baselineStart;
 
 % Get timing data
 
@@ -391,8 +394,8 @@ end
 
 %%
 
-% % save workspace variables
-% matFileName = strcat(expData(1).name, "_to_", ...
-%     expData(end).name,'_sequentialZScore');
-% 
-% save(fullfile(saveDir, matFileName));
+% save workspace variables
+matFileName = strcat(expData(1).name, "_to_", ...
+    expData(end).name,'_sequentialZScore');
+
+save(fullfile(saveDir, matFileName));

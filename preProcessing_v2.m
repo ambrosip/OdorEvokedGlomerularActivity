@@ -4,13 +4,13 @@ close all
 %% USER INPUT - experiment directory and others - EDIT ME
 
 % experiment dir to be analyzed
-expDir = '/Volumes/MossLab/ImagingData/20260320/m310/e1';
+expDir = 'M:\ImagingData\20260309\m357';
 
 % variables made to deal with problem files
 ignoreLastTrial = 0;
 
 % to analyze patchwarp mcor output
-patchwarp = 1;
+patchwarp = 0;
 
 % set img-specific inputs
 photobleaching_window_s = 2; % duration of data in senconds that will be removed from baseline to account for photobleaching
@@ -30,7 +30,7 @@ trial_start_label_h5 = '/ImagingWindow';
 odor_dur_h5 = '/OdorDelivery';
 
 % set program type x odor x action x outcome relationships
-olfactory_task = "2afc_fine_coarse_fine";
+olfactory_task = "2afc_fine_coarse_fine";                                                                                                                                                                                                                                                                                                                  
 olfactory_task = "passive_odor_presentations";
 minLicksToTriggerReward = 3;
 
