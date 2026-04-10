@@ -17,7 +17,7 @@ DEPENDS on:
 % ASSUMPTION: folders are ordered chronologically
 % USE DOUBLE QUOTES, NOT SINGLE QUOTES
 expFolders = [ ...
-    "M:\ImagingData\20260311\m357"
+    "M:\ImagingData\20260309\m357"
     ];
 
 % File extension for the plot images

@@ -60,7 +60,7 @@ if comparisonType == "between programs"
             totalAcqs(1,programNum) = lastAcqIdx(1,programNum) - firstAcqIdx(1,programNum) + 1;
             baselinesToCompare(:,programNum) = mean(baselinesAll(firstAcqIdx(1,programNum):lastAcqIdx(1,programNum),:))';
         end
-        figure('Name',strcat(namePrefix, "_baselines"))
+        figure('Name',strcat(namePrefix, "_", dataType, "_baselines"))
         nexttile
             for roi = 1:expData.nROIs
                 scatter(baselinesAll(firstAcqIdx(1,1):lastAcqIdx(1,1),roi),baselinesAll(firstAcqIdx(1,2):lastAcqIdx(1,2),roi))
@@ -98,7 +98,7 @@ if comparisonType == "between programs"
                 thisOdorProg1AcqIdx = thisOdorProg1AcqIdx(1:nAcqsToCompare,:);
                 thisOdorProg2AcqIdx = thisOdorProg2AcqIdx(1:nAcqsToCompare,:);
             end        
-            figure('Name',strcat(namePrefix, "_odor_", num2str(odorID)))
+            figure('Name',strcat(namePrefix, "_", dataType, "_odor_", num2str(odorID)))
             nexttile
                 for roi = 1:expData.nROIs
                     scatter(odorAll(thisOdorProg1AcqIdx',roi),odorAll(thisOdorProg2AcqIdx',roi))
