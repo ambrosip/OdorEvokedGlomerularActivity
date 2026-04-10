@@ -2,7 +2,7 @@
 
 expData.baselineStart = expData.baselineStart + 1;
 
-ylimit.dFF = 1;
+ylimit.dFF = 0.2;
 ylimit.zScore = 5;
 
 
@@ -60,6 +60,16 @@ if comparisonType == "between programs"
             totalAcqs(1,programNum) = lastAcqIdx(1,programNum) - firstAcqIdx(1,programNum) + 1;
             baselinesToCompare(:,programNum) = mean(baselinesAll(firstAcqIdx(1,programNum):lastAcqIdx(1,programNum),:))';
         end
+        if totalAcqs(1) < totalAcqs(2)
+            disp("we have more acqs in exp2 bro")
+            lastAcqIdx(2) = lastAcqIdx(2) - (totalAcqs(2) - totalAcqs(1)); % CHECK MATH ALERT
+        elseif totalAcqs(1) > totalAcqs(2)
+            disp("we have more acqs in exp1 bro")
+            lastAcqIdx(1) = lastAcqIdx(1) - (totalAcqs(1) - totalAcqs(2));
+        else
+            disp("good job, we have the same number of acqs in both expts")
+        end
+
         figure('Name',strcat(namePrefix, "_", dataType, "_baselines"))
         nexttile
             for roi = 1:expData.nROIs
