@@ -27,7 +27,7 @@ DEPENDS on:
 %% USER INPUT
 
 % Experiment folder
-expFolder = "M:\ImagingData\20260311\m357";
+expFolder = "/Volumes/MossLab/ImagingData/20260330/m357/e1";
 
 % Define the colors
 max_df_color = [103 0 31] / 255;
@@ -67,10 +67,12 @@ frameOdorOffsetFromBaseline = framesRollingWindow + frameOdorDuration;
 %% Get mcor File Paths
 
 % Assumes the default folder structure for a experiment
-mcorFolder = fullfile(expFolder, 'processed', 'mcor');
+% mcorFolder = fullfile(expFolder, 'processed', 'mcor');
+mcorFolder = mcorImgDir;
 
 % Store file paths
-mcorFilePaths = dir(fullfile(mcorFolder, "*_mcor.tif"));
+% mcorFilePaths = dir(fullfile(mcorFolder, "*_mcor.tif"));
+mcorFilePaths = dir(fullfile(mcorFolder, "*.tif"));
 if isempty(mcorFilePaths), error("mcor folder is empty."); end
 
 % Make sure they are in the right order

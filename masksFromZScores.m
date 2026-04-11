@@ -20,16 +20,29 @@ dilationDisk = strel("disk", 5);
 % if using mcor files from odyn (caiman python)
 convertFrom32bit = true;
 
+plotSubset = 0;
+firstAcq = 1;
+lastAcq = 2; 
+
 saveFigs = 1;
 
-yLimManual = 1;
+yLimManual = 0;
 ymin = -0.2;
 ymax = 0.2;
 
 
 %% Make z-proj of 1st mcor file for ROI labeling
 
-getFileDirs
+if exist('patchwarp','var')
+    if patchwarp == 1
+        getFileDirs_patchwarp
+    else
+        getFileDirs
+    end
+else
+    getFileDirs
+end
+
 getImgDirs
 
 filename = imgsToAnalyzeDirs(1).name;
