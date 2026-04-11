@@ -1,5 +1,5 @@
 % DEPENDS ON OUTPUTS FROM:
-% 1) image_dF_post_odor (*_mcor_postOdor.mat)
+% 1) image_dF_* (loading *_mcor_postOdor.mat works)
 
 % TODO: 1) Split blobs
 %       2) Plot z-scores instead of dF/F
@@ -7,13 +7,21 @@
 
 %% USER INPUT
 
-% Range for the z-score plots
+% Range for the z-score plots (only affects plotting)
 plotRange = [-5, 5];
 
+% Std for the gaussian blur filter (increase to make it more blurry)
+% We blur the image to remove small variations that might affect the mask
+gaussianStd = 3.5;
+
 % Lower threshold to exclude from the z-score mask
+% This threshold will determine the ROIs boundary
+% Increase to make ROIs smaller and exclude fainter signals
 lowerThreshold = 1.0;
 
 % Disks for erosion and dilation
+% Using the same radius for both prevents merging and extra splittin
+% Increase the radius to make ROIs rounder or to remove small ROIs.
 erosionDisk = strel("disk", 5);
 dilationDisk = strel("disk", 5);
 
@@ -65,7 +73,7 @@ maxBlur = zeros(size(figures(1).na.image));
 for iFigure = 1:length(figures)
     minEnvelope = min(minEnvelope, figures(iFigure).na.image);
     maxEnvelope = max(maxEnvelope, figures(iFigure).na.image);
-    maxBlur = max(maxBlur, abs(imgaussfilt(figures(iFigure).na.image, 3.5)));
+    maxBlur = max(maxBlur, abs(imgaussfilt(figures(iFigure).na.image, gaussianStd)));
 end
 
 % Plotting the z-score envelope
