@@ -1,6 +1,6 @@
 %% USER INPUT
 
-expData.baselineStart = expData.baselineStart + 1;
+
 
 ylimit.dFF = 0.2;
 ylimit.zScore = 5;
@@ -38,6 +38,9 @@ namePrefix = strcat(...
 if comparisonType == "between programs"
 
     for dataType = ["dFF", "zScore"]
+
+        % adjust first data point to 1 instead of 0
+        expData.baselineStart = expData.baselineStart + 1;
 
         dataToAnalyze = expData.(dataType);
         
