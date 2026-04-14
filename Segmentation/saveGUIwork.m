@@ -11,15 +11,21 @@ firstAcq = 1;
 lastAcq = 2; 
 
 saveFigs = 1;
+saveWorkspace = 1;
 
-yLimManual = 0;
-ymin = -0.2;
-ymax = 0.2;
+manual_y_limits = 1;
+ymax = 10;
+ymin = -10;
+
+manual_x_limits = 1;
+xmin = -2;
+xmax = 4;
 
 
 %% Saves final mask from GUI
 
 [finalMask, nROIs] = bwlabel(segmentationGUI.UserData.maskAfterExclusion > 0, 4);
+labelRGB = label2rgb(finalMask, 'jet', 'k', 'shuffle'); 
 
 
 %% Make z-proj of 1st mcor file for ROI labeling
@@ -64,12 +70,11 @@ hold off;
 % ADAPTED FROM TimeSeriesFromFijiROIsZscores (TODO: CLEAN UP)
 %% Get fluorescence in fiji ROIs for each file/acquisition
 
-% meanInt = mean intensity
-meanIntPerRoi = [];
 for file = 1:imgsToAnalyze_numberOf
-
+    
     % get OS-appropriate file dir
-    imgToAnalyzeFileDir = fullfile(imgsToAnalyzeFolder, imgsToAnalyzeDirs(file).name);
+    imgToAnalyzeFileDir = fullfile(imgsToAnalyzeFolder, ...
+        imgsToAnalyzeDirs(file).name);
 
     % get img file name without extension (stored in "f")
     [p,f,e] = fileparts(imgsToAnalyzeNames(file));
@@ -77,270 +82,325 @@ for file = 1:imgsToAnalyze_numberOf
     % add "a" in front of the filename in f to build a structure later
     % why? matlab freaks out if field names of a structure start with numbers
     f = {strcat('a', cell2mat(f))};
-    
+
     % get img info
     imgInfo = imfinfo(imgToAnalyzeFileDir);
-    frames_per_img = length(imgInfo);
+    nFrames = length(imgInfo);
+
+    % Load whole movie and shift to be positive by adding min int16 value
+    movieToAnalyze = single(tiffreadVolume(imgToAnalyzeFileDir));
+    movieToAnalyze = movieToAnalyze + 32768;
     
-    % iterate frame by frame (each frame is a time point)
-    for frame = 1:frames_per_img
+    % DONT TO THIS because each movie will get different treatment!!!
+    % movieToAnalyze = movieToAnalyze - min(movieToAnalyze, [], 'all');
 
-        % Read img frame by frame
-        % Raw files from scanimage and mcor files from the matlab motion
-        % correction script are stored as int16 (signed 16-bit integer,
-        % with values ranging from -32768 to 32767). To avoid errors with
-        % dF/F calculation due to negative values, I used to convert these
-        % files to uint16 (unsigned 16-bit integer, with values ranging
-        % from 0 to 65535). To allow further processing, I then converted
-        % the numbers to single (similar to double, but with less precision). 
-        % Mcor files from the python script are stored as int32 (signed
-        % 32-bit integer, with values ranging from -2,147,483,648 to
-        % 2,147,483,647), but the actual range of the data is just a bit
-        % wider than the int16 range. To deal with all of these files
-        % without improperly compressing the data (e.g. the function cast
-        % does NOT work properly to convert int32 to uint16), I decided to
-        % simply shift the dataset to the right by adding 32768 (the
-        % min int16 value) and then convert it to single.
-        % FYI, imread saves data as double.
-        imgToAnalyze = imread(imgToAnalyzeFileDir,frame);
-        imgToAnalyze = imgToAnalyze + 32768;
-        imgToAnalyze = single(imgToAnalyze);
+    % Initialize a matrix of the correct size
+    % The value 0.0 will be overwritten later
+    meanPerROI(nFrames, nROIs) = 0.0;
 
-        % ------------- PROBLEMATIC CODE - DO NOT USE ----------------- %
-        % % why problematic? removes different values from different
-        % frames!!! The better alternative is to remove the SAME VALUE from
-        % all the frames
-        %
-        % % old explanation
-        % % Raw files from scanimage and mcor files from the matlab motion
-        % % correction script are stored as int16 (signed 16-bit integer,
-        % % with values ranging from -32768 to 32767). To avoid errors with
-        % % dF/F calculation due to negative values, I used to convert these
-        % % files to uint16 (unsigned 16-bit integer, with values ranging
-        % % from 0 to 65535). To allow further processing, I then converted
-        % % the numbers to single (similar to double, but with less precision). 
-        % % Mcor files from the python script are stored as int32 (signed
-        % % 32-bit integer, with values ranging from -2,147,483,648 to
-        % % 2,147,483,647), but the actual range of the data is just a bit
-        % % wider than the int16 range. To deal with all of these files
-        % % without improperly compressing the data (e.g. the function cast
-        % % does NOT work properly to convert int32 to uint16), I decided to
-        % % simply shift the dataset to the right by subtracting the min
-        % % value if it's below zero. If the min value is above zero, we do
-        % % nothing, because we don't have negative values to worry about. In
-        % % sum, regardless of bit depth, we will make sure that the lower 
-        % % range of values is >= zero. FYI, imread saves data as double.
-        % 
-        % % Make sure that all entries of imgToAnalize are >= zero
-        % if min(imgToAnalyze, [], 'all') < 0
-        %     imgToAnalyze = imgToAnalyze - min(imgToAnalyze, [], 'all');
-        % end
-        % ------------------------------------------------------------- %
-
-        % ------------- PROBLEMATIC CODE - DO NOT USE ----------------- %
-        % % why problematic? DOES NOT WORK
-        % % old code, kept for archiving purposes
-        % % deal with 32-bit files - this does NOT WORK - DO NOT USE
-        % if convertFrom32bit
-        %     imgToAnalyze = cast(imgToAnalyze, 'uint16');
-        % end
-        % 
-        % % convert img to uint16 (range: 0 to 65535)
-        % imgToAnalyze = im2uint16(imgToAnalyze);
-
-        % ------------------------------------------------------------- %
-    
-        % iterate ROI by ROI
-        for roiNumber = 1:nROIs
-            labeledRoi = finalMask == roiNumber;
-            % figure; imshow(labeledRoi) % use this to troubleshoot 
-            nPixelsInRoi = sum(labeledRoi,'all');
-            % labeledRoiAsInt16 = int16(labeledRoi);
-            labeledRoiAsSingle = single(labeledRoi);
-            % maskedImg = labeledRoiAsInt16.*imgToAnalyze;
-            maskedImg = labeledRoiAsSingle.*imgToAnalyze;
-            % figure; imshow(imadjust(maskedImg,[0.5 0.65])) % use this to troubleshoot 
-            % it is safe to sum uint16 variables: https://www.mathworks.com/matlabcentral/answers/5401-matlab-function-mean-returns-the-exact-same-value-for-uint16-and-double-values-not-for-single
-            meanIntInRoi = sum(maskedImg,'all')/nPixelsInRoi;
-            % store mean fluorescence per frame and roi
-            meanIntPerRoi(frame,roiNumber) = meanIntInRoi;
-        end
+    for iROI = 1:nROIs
+        ROIMask = single(finalMask == iROI);
+        nPixelInROI = sum(ROIMask, "all");
+        
+        meanPerROI(:,iROI) = sum(ROIMask .* movieToAnalyze, [1, 2]);
+        meanPerROI(:,iROI) = meanPerROI(:, iROI) / nPixelInROI;
     end
 
-    % store info for all files in a structure
-    s.(f{1})=meanIntPerRoi;
-
-    disp(strcat("processing rois in file ", f, " done"))
+    fileSignals.(f{1}) = meanPerROI;
+    disp(strcat("Finished processing ROIs in file ", f))
 end
 
 
-%% Calculate dF/F for each ROI across files
+%% Calculate Z-Scores of dF/F for each ROI across files
 
-% set default firstFig and lastFig boundaries in case user does NOT want a
-% custom subset
-if plotSubset == 0
+lastAcq = imgsToAnalyze_numberOf;
+
+if plotSubset
     firstAcq = 1;
-    lastAcq = imgsToAnalyze_numberOf;
+    lastAcq = length(imgToAnalyzeFileDir);
 end
 
-fns = fieldnames(s);
-firstAcqName = fns{firstAcq};
-lastAcqName = fns{lastAcq};
+aFilenames = fieldnames(fileSignals);
+firstAcquisitionName = aFilenames{firstAcq};
+lastAcquisitionName = aFilenames{lastAcq};
 
-% delete the first few seconds of the data because of photobleaching
-photobleaching_window_frames = photobleaching_window_s * frame_rate_hz;
-adjusted_baseline_dur_s = baseline_dur_s - photobleaching_window_s;
-adjusted_baseline_frames = adjusted_baseline_dur_s * frame_rate_hz;
+photobleachingWindowEnd = round(photobleaching_window_s * frame_rate_hz);
+adjustedBaselineEnd = round( ...
+    (baseline_dur_s - photobleaching_window_s) * frame_rate_hz);
 
-% calculate dF/F
-% dF/F = (F - mean F in baseline) / mean F in baseline
-dF_per_file=[];
-for file=firstAcq:lastAcq
-    f_per_file = s.(fns{file});
-    f_per_file = f_per_file(photobleaching_window_frames:end,:);
-    for roi=1:nROIs
-        mean_baseline_f = mean(f_per_file(1:adjusted_baseline_frames,roi),'omitnan');
-        dF_per_file(:,roi) = (f_per_file(:,roi) - mean_baseline_f) / mean_baseline_f;
-    end
-    s_dF.(fns{file})=dF_per_file(1:end,:);
+for file = firstAcq:lastAcq
+    croppedSignal = fileSignals.(aFilenames{file});
+    croppedSignal = croppedSignal(photobleachingWindowEnd:end, :);
+
+    baseline = croppedSignal(1:adjustedBaselineEnd, :);
+    meanBaseline = mean(baseline, 1, 'omitnan');
+    
+    dFF = (croppedSignal - meanBaseline) ./ meanBaseline;
+    baseline = dFF(1:adjustedBaselineEnd, :);
+    
+    zdFF = (dFF - mean(baseline, 1)) ./ std(baseline, 0, 1);
+    fileZdFF.(aFilenames{file}) = zdFF;
 end
 
 % create x axis in seconds and adjust it based on the photobleaching window
-adjusted_img_dur_dataPts = size(dF_per_file,1);
-adjusted_img_dur_s = adjusted_img_dur_dataPts / frame_rate_hz;
-adjusted_odor_onset_s = adjusted_baseline_dur_s;
-adjusted_odor_offset_s = adjusted_baseline_dur_s + odor_dur_s;
-xAxisInSec = linspace(0 - adjusted_odor_onset_s, adjusted_img_dur_s - adjusted_odor_onset_s, adjusted_img_dur_dataPts);
+croppedSignalFrames = size(croppedSignal, 1);
+adjustedImageDuration = croppedSignalFrames / frame_rate_hz;
+adjusted_baseline_dur_s = baseline_dur_s - photobleaching_window_s;
 
-disp("calculated dF/F")
+odorOnset = adjusted_baseline_dur_s;
+odorOffset = adjusted_baseline_dur_s + odor_dur_s;
+xs = linspace(-odorOnset, adjustedImageDuration - odorOnset, ...
+    croppedSignalFrames);
 
-%% PLOT data in ROIs organized by odor (rows) and program type (columns)
+disp("Calculated Z-scores of dF/F")
 
-if yLimManual == 0
-    % get max and min value cof dF/F to set y axis limits
-    ymax = round(max(structfun(@(x) max(x,[],'all'),s_dF,'UniformOutput',true)), TieBreaker='plusinf');
-    ymin = round(min(structfun(@(x) min(x,[],'all'),s_dF,'UniformOutput',true)), TieBreaker='minusinf');
-    
+%% Prep for plots
+
+if manual_y_limits == 0
     % Gets the first integer below min and first above max
-    % ymax = ceil(max(structfun(@(x) max(x,[],'all'),s_dF,'UniformOutput',true)));
-    % ymin = floor(min(structfun(@(x) min(x,[],'all'),s_dF,'UniformOutput',true)));
-    
-    % adjust ymin to -0.1 in case it's zero
-    if ymin == 0
-       ymin = -0.1;
-    end
-    
-    % adjust max to +0.1 in case it's zero
-    if ymax == 0
-       ymax = 0.1;
-    end
+    ymax = ceil(max(structfun(@(x) max(x,[],'all'), ...
+        fileZdFF,'UniformOutput',true)));
+    ymin = floor(min(structfun(@(x) min(x,[],'all'), ...
+        fileZdFF,'UniformOutput',true)));
 end
 
-% get max and min value of xAxis to set x acis limits
-xmin = round(min(xAxisInSec),TieBreaker='minusinf');
-xmax = round(max(xAxisInSec),TieBreaker='plusinf');
+if manual_x_limits == 0
+    % Get the min and max value for x
+    xmin = round(xs(1));
+    xmax = round(xs(end));
+end
 
-% get max number of odors used in this experiment
-max_odor_num = 0;
-for programNum = 1:size(programFieldNames,1) % ALERT added ",1" on Mar 19 2026
-    programFieldName = programFieldNames(programNum);
+% Get the max number of odors used in this experiment
+maxOdorNumber = 0;
+for iProgram = 1:length(programFieldNames)
+    programFieldName = programFieldNames(iProgram);
+
     if s_olfactometer.(programFieldName).type ~= "ignore"
-        odor_num = size(s_olfactometer.(programFieldName).odorList,1);
-        if max_odor_num < odor_num
-            max_odor_num = odor_num;
+        odorNumber = length(s_olfactometer.(programFieldName).odorList);
+        if maxOdorNumber < odorNumber
+            maxOdorNumber = odorNumber;
         end
     end
 end
 
-% iterate through rois
-ignoredPrograms = size(programFieldNames,1) - programsToAnalyze;
-labelRGB = label2rgb(finalMask, 'jet', 'k', 'shuffle'); 
+% Number of rows and columns on the tiledlayout
+rows = maxOdorNumber;
+columns = programsToAnalyze + 1;
 
-for roi=1:nROIs
-    figName = strcat(firstAcqName(2:end), '_to_', lastAcqName(2:end), '_roi_', num2str(roi), '_dF');
-    fig = figure('Name',figName);
-    set(gca,'FontName','Arial');
-    set(gca,'LineWidth', 0.75);
-    % make a layout with "odor" rows and "program" + 1 columns
-    rows = max_odor_num;
-    columns = programsToAnalyze+1;
-    t = tiledlayout(rows,columns);
-    title(t,figName,'Interpreter','none');
-    relativeProgramNum = 0;
-    for programNum = 1:size(programFieldNames,1) % ALERT added ,1 
-        programFieldName = programFieldNames(programNum);
-        if s_olfactometer.(programFieldName).type ~= "ignore"
-            relativeProgramNum = relativeProgramNum + 1;
-            for odorNum = 1:length(s_olfactometer.(programFieldName).odorList)
-                nexttile(relativeProgramNum + (odorNum-1)*columns)
-                odorID = extractBetween(s_olfactometer.(programFieldName).odorList(odorNum),"I "," -");
-                odorFieldName = s_olfactometer.(programFieldName).odorFieldNames(odorNum);
-                color = odor_color.colorID(odor_color.odorID==str2double(odorID),:);
-                hold on;
-                rectangle('Position',[0 ymin odor_dur_s ymax-ymin],'FaceAlpha',0.05,'FaceColor',[0 0 0],'EdgeColor', 'none');
-                yline(0,'k--')
-                axis([xmin xmax ymin ymax])
-                title(strcat(odorFieldName, '_', s_olfactometer.(programFieldName).type), 'Interpreter','none');
-                xlabel('Time from odor onset (s)')
-                ylabel('dF/F')
+%% Get average z-score per odor per block (i.e. program) per roi
 
-                for acqIdx = s_olfactometer.(programFieldName).summary_by_trial.acqIdx(s_olfactometer.(programFieldName).summary_by_trial.odor==str2double(odorID))'
-                    % plot dF/F   
-                    if ~isnan(acqIdx) && acqIdx > 0
-                        plot(xAxisInSec',s_dF.(fns{acqIdx})(:,roi),'Color',[color 0.5],'LineWidth',0.5);  
-                    end
+% Get size from first zdFF matrix (frames per ROIs)
+fileZdFF_fieldnames = fieldnames(fileZdFF);
+[nFrames, nROIs] = size(fileZdFF.(fileZdFF_fieldnames{1}));
+
+for programNum = unique(db_trials.programNum)'
+    rowsToKeep_thisProgram = ismember(db_trials.programNum, programNum);
+
+    for odorID = unique(db_trials.odorID)'
+        rowsToKeep_thisOdor = ismember(db_trials.odorID, odorID);
+
+        for outcome = unique(db_trials.outcome)'
+            rowsToKeep_thisOutcome = ismember(db_trials.outcome, outcome);
+
+            rowsToKeep =...
+                logical(rowsToKeep_thisProgram .*...
+                    rowsToKeep_thisOdor .*...
+                    rowsToKeep_thisOutcome);
+
+            acqsIdxToKeep = db_trials.acqIdx(rowsToKeep);
+            acqsIdxToKeep = rmmissing(acqsIdxToKeep); % remove nans
+            acqsTotal = numel(acqsIdxToKeep);
+
+            fieldnamesToKeep = fileZdFF_fieldnames(acqsIdxToKeep);
+            nAcq = length(fieldnamesToKeep);
+
+            % Skips this combination of program, odor, outcome if there are
+            % no acquisition with those parameters
+            if nAcq == 0
+                continue
+            end
+            
+            % Preallocate the matrix by adding a 0 to the end.
+            % It might have been easier to take the mean first, to not
+            % store a big matrix, but this is easier to understand
+            clear allFrames_allROIs_allAcq;
+            allFrames_allROIs_allAcq(nFrames, nROIs, nAcq) = 0;
+
+            % Concatenate all zdFF into a nFrames x nROIs x nAcq matrix
+            for iAcquisition = 1:length(fieldnamesToKeep)
+                fieldname = fieldnamesToKeep{iAcquisition};
+                allFrames_allROIs_thisAcq = fileZdFF.(fieldname);
+                allFrames_allROIs_allAcq(:, :, iAcquisition) = ...
+                    allFrames_allROIs_thisAcq;
+            end
+
+            % Average over acquisitions (3rd dimension)
+            allFrames_allROIs_meanAcq = ...
+                mean(allFrames_allROIs_allAcq, 3, 'omitnan');
+            
+            % Fix field names for the structure
+            programFieldName = strcat("program_", num2str(programNum));
+            odorFieldName = strcat("odor_", num2str(odorID));
+
+            if outcome == "false choice"
+                outcome = "false_choice";
+            end
+    
+            outcomeFieldName = outcome;
+
+            % Add new matrix to the structure
+            s_mean_zscore.(programFieldName).(odorFieldName).(outcomeFieldName) = ...
+                allFrames_allROIs_meanAcq;
+
+            % Also, storing the matrix before averaging
+            s_zscore.(programFieldName).(odorFieldName).(outcomeFieldName) = ...
+                allFrames_allROIs_allAcq;
+
+            % TO DO: s_mean_zscore is redundant, remove it by changing
+            % ------ the code that comes later (adding the relevant means)
+        end
+    end
+end
+
+%% PLOT AVGS - all outcomes (with SEM), color-coded by outcome (or odor, if outcome is nan)
+
+allProgramFieldName = fieldnames(s_zscore);
+
+% (number of odors) x (number of programs + extra columns)
+% The extra columns are to put the plot showing the ROI
+extraColumns = 3;
+
+rows = length(allProgramFieldName);
+columns = maxOdorNumber + extraColumns;
+
+% xsx is the palindromic version of xs (needed for the fill plot)
+xsx = [xs flip(xs)];
+
+for iROI = 1:nROIs
+    % Create one figure per ROI
+    figName = strcat( ...
+        firstAcquisitionName, '_to_', lastAcquisitionName, ...
+        '_roi_', num2str(iROI), '_zdFF_SEM');
+
+    fig = figure('Name', figName);
+
+    % Create tiledlayout of shape odors by programs
+    t = tiledlayout(rows, columns);
+    title(t, figName, 'Interpreter','none');
+
+    % Iterate through programs and odors, getting the fieldnames as we go
+    for iProgram = 1:length(allProgramFieldName)
+        % Get the struct to shorten the names in the next for loops
+        programFieldName = allProgramFieldName{iProgram};        
+        programStruct = s_zscore.(programFieldName);
+        allOdorFieldName = fieldnames(programStruct);
+
+        % Get program type to make tile title
+        programType = s_olfactometer.(programFieldName).type;
+        odorList = s_olfactometer.(programFieldName).odorList;
+
+        for iOdor = 1:length(allOdorFieldName)
+            odorFieldName = allOdorFieldName{iOdor};
+            odorStruct = programStruct.(odorFieldName);
+            allOutcomeFieldName = fieldnames(odorStruct);
+            
+            % Create the plot
+            nexttile(iOdor + (iProgram - 1) * columns)
+            hold on;
+            
+            % Getting the odorID like Priscilla did
+            odorID = extractBetween(odorList(iOdor), "I ", " -");
+
+            % More plot settings + highlighting odor presentation window
+            rectangle('Position',[0 ymin odor_dur_s ymax-ymin], ...
+                'FaceAlpha',0.05,'FaceColor',[0 0 0],'EdgeColor', 'none');
+            yline(0,'k--')
+            
+            % Iterate through outcomes, plotting both on the same graph
+            for iOutcome = 1:length(allOutcomeFieldName)
+                outcomeFieldName = allOutcomeFieldName{iOutcome};
+
+                if olfactory_task == "passive_odor_presentations"
+                    % Get the odor color from user input in preProcessing_v2
+                    color = odor_color.colorID(odor_color.odorID==str2double(odorID),:);
+                else
+                    % Get the outcome color from struct in user input
+                    color = outcomeColors.(outcomeFieldName);
                 end
 
-                % plot mean dF/F
-                % plot(xAxisInSec',s_mean_dF.(odorFieldNames(odor))(:,roi),'Color',color,'LineWidth',1);
-                hold off;
+                % Gets data for this ROI and all acquisitions
+                allFrames_allROIs_allAcq = odorStruct.(outcomeFieldName);
+                allFrames_thisROI_allAcq = ...
+                    allFrames_allROIs_allAcq(:,iROI,:);
 
-                disp(strcat("plot odor ", odorID, " done"))
+                % Get the mean and stderr (SEM) along acquisitions
+                allFrames_thisROI_meanAcq = ...
+                    mean(allFrames_thisROI_allAcq, 3);
+                allFrames_thisROI_stderrAcq = ...
+                    std(allFrames_thisROI_allAcq, 0, 3) / ...
+                    sqrt(size(allFrames_thisROI_allAcq, 3));
+
+                % Compute fill limits (xs were done at the start)
+                upperBound = allFrames_thisROI_meanAcq + ...
+                    allFrames_thisROI_stderrAcq;
+                lowerBound = allFrames_thisROI_meanAcq - ...
+                    allFrames_thisROI_stderrAcq;
+
+                fill(xsx', [lowerBound; flip(upperBound)], color, ...
+                    'FaceAlpha', 0.3, 'EdgeColor', 'none');
+
+                % Lines are a little less transparent and thicker than
+                % in other graphs (0.5 to 0.7 for both of them).
+                plot(xs', allFrames_thisROI_meanAcq, ...
+                    'Color', [color 1], 'LineWidth', 1);
             end
+
+            hold off;
+            disp(strcat("plot odor ", odorID, " done"))
+
+            % Plot aesthetics            
+            axis([xmin xmax ymin ymax])
+            if olfactory_task == "passive_odor_presentations"
+                set(gcf, 'OuterPosition', [100 100 1600 400]);
+            else 
+                set(gcf, 'OuterPosition', [100 100 1600 900]);
+            end
+            set(gca, 'LineWidth', 0.75);
+            set(gca, 'FontName', 'Arial');
+            set(findall(gcf,'-property','FontSize'),'FontSize',12)
+            title(strcat(odorFieldName, '_', programType), ...
+                'Interpreter', 'none');
+            xlabel('Time from odor onset (s)')
+            ylabel('dF/F Z-score')
+            xticks([xmin,0,1,xmax]);
+            yticks([ymin,0,ymax]);           
         end
     end
-    % show ROI location
-    nexttile(columns,[max_odor_num,1])
+
+    % Last tile showing the ROI
+    nexttile(columns - extraColumns + 1, [rows, extraColumns])
+    
+    hold on;
     if convertFrom32bit
         avgProjection = cast(avgProjection,'uint16');
-        imshow(imadjust(avgProjection))
+        imshow(imadjust(avgProjection));
     else
-        imshow(imadjust(avgProjection,[0.5 0.65])) 
+        imshow(imadjust(avgProjection,[0.5 0.65]));
     end
-
-
-    hold on
-
+    
     hOverlay = imshow(labelRGB);
-    alphaMap = double(finalMask == roi) * 0.5; 
+    alphaMap = double(finalMask == iROI) * 0.5; 
     set(hOverlay, 'AlphaData', alphaMap);
 
-    hold off  
-    
+    hold off;  
+
     t.TileSpacing = 'compact';
     t.Padding = 'compact';
-
-    fig.Position = [0 0 800 1200];
-
-    drawnow;
-
-    disp(strcat("plot roi ", num2str(roi), " done"))
+    disp(strcat("plot roi ", num2str(iROI), " done"))
 end
 
-disp("plot done")
 
-
-
-
-
-%% Save Figures
-
-todayStr = string(datetime('Today'), 'yyyy-MM-dd');
-saveFolder = fullfile(expDir, 'processed', 'matlab', todayStr);
-
-if ~isfolder(saveFolder)
-    mkdir(saveFolder);
-end
+%% Save figs
 
 if saveFigs
     FigList = findobj(allchild(0), 'flat', 'Type', 'figure');
@@ -355,14 +415,24 @@ if saveFigs
       % actually saves a vector file
       saveas(FigHandle,fullfile(saveFolder, [FigName '.svg']));
     end 
-
     disp('saved all figs')
     close all
 end
 
 
-%% Save workspace variables
+%% Save workspace
 
-matFileName = strcat(todayStr, '_masksFromZScores');
-save(fullfile(saveFolder,matFileName));     
-disp('I saved the mat file')
+% Create naming variables
+todayStr = string(datetime('Today'), 'yyyy-MM-dd');
+saveFolder = fullfile(expDir, 'processed', 'matlab', todayStr);
+firstAcquisitionName = firstAcqName(1:end-9);
+lastAcquisitionName = lastAcqName(1:end-9);
+
+if not(isfolder(saveFolder))
+    mkdir(saveFolder);
+end
+
+matFileName = strcat(firstAcquisitionName, '_to_', ...
+    lastAcquisitionName, '_', todayStr, '_masksFromGUI');
+save(fullfile(saveFolder, matFileName));
+disp('I saved the mat file');
