@@ -10,6 +10,7 @@ TODO:
     2) Add a tool to draw ROIs
     3) Include the whole movie instead of just a frame
     4) Improve the strip bounds calculation
+    5) Add load state after closing
 
 DEPENDS:
     - image_dF_* until "Iterate over Data" section.
@@ -29,7 +30,8 @@ for iFigure = 1:length(figures)
     maxEnvelope = max(maxEnvelope, figures(iFigure).na.image);
 end
 
-zScoreEnvelope = (abs(minEnvelope) >= abs(maxEnvelope)) .* minEnvelope + ...
+zScoreEnvelope = ...
+        (abs(minEnvelope) >= abs(maxEnvelope)) .* minEnvelope + ...
         (abs(minEnvelope) < abs(maxEnvelope)) .* maxEnvelope;
 
 %% Create GUI
@@ -53,7 +55,8 @@ segmentationGUI.UserData.gradient = divergingGradient;
 segmentationGUI.UserData.showThreshold = true;
 segmentationGUI.UserData.showROIs = true;
 segmentationGUI.UserData.currentTool = "Pick Strip Center";
-segmentationGUI.UserData.excludedCenter = round(size(zScoreEnvelope, 1) / 2);
+segmentationGUI.UserData.excludedCenter = ...
+    round(size(zScoreEnvelope, 1) / 2);
 segmentationGUI.UserData.excludedHeight = 50;
 segmentationGUI.UserData.excludedROIs = [];
 
@@ -81,7 +84,8 @@ showROIs.ValueChangedFcn = ...
     @(src, event) ROIButton(src, segmentationGUI);
 
 tools = uibuttongroup(glButtons);
-tools.SelectionChangedFcn = @(src, event) toolsCallback(src, segmentationGUI);
+tools.SelectionChangedFcn = ...
+    @(src, event) toolsCallback(src, segmentationGUI);
 
 excludeRegionButton = uitogglebutton(tools);
 excludeRegionButton.Position = [5 5 120 30];
@@ -99,26 +103,32 @@ segmentationGUI.UserData.axis = uiaxes(gl);
 segmentationGUI.UserData.axis.Layout.Row = 2;
 segmentationGUI.UserData.axis.Layout.Column = 1;
 
-segmentationGUI.UserData.plotHandle = imshow(segmentationGUI.UserData.image ...
-                                , segmentationGUI.UserData.plotRange ...
-                                , 'Parent' ...
-                                , segmentationGUI.UserData.axis);
-colormap(segmentationGUI.UserData.axis, segmentationGUI.UserData.gradient);
+segmentationGUI.UserData.plotHandle = ...
+    imshow( segmentationGUI.UserData.image ...
+          , segmentationGUI.UserData.plotRange ...
+          , 'Parent', segmentationGUI.UserData.axis ...
+          );
+
+colormap( segmentationGUI.UserData.axis ...
+        , segmentationGUI.UserData.gradient);
 
 % Add excluded region to the plot
-imgWidth = size(segmentationGUI.UserData.image, 2);
-excludedPosition = [ 1 ...
-                   ( segmentationGUI.UserData.excludedCenter ...
-                       - round(segmentationGUI.UserData.excludedHeight / 2)) ...
-                   imgWidth ...
-                   segmentationGUI.UserData.excludedHeight ...
-                   ];
 
-segmentationGUI.UserData.excluded = rectangle( "Parent", segmentationGUI.UserData.axis ...
-                                 , "FaceColor", [.8 .8 0.0] ...
-                                 , "FaceAlpha", 0.5 ...
-                                 , "Position", excludedPosition ...
-                                 );
+stripCenter = segmentationGUI.UserData.excludedCenter;
+stripWidth = size(segmentationGUI.UserData.image, 2);
+stripHeight = segmentationGUI.UserData.excludedHeight;
+
+stripXmin = 1;
+stripYmin = stripCenter - round(stripHeight / 2);
+
+excludedPosition = [ stripXmin stripYmin stripWidth stripHeight ];
+
+segmentationGUI.UserData.excluded = ...
+    rectangle( "Parent", segmentationGUI.UserData.axis ...
+             , "FaceColor", [.8 .8 0.0] ...
+             , "FaceAlpha", 0.5 ...
+             , "Position", excludedPosition ...
+             );
 
 % Hold to plot overlay later
 hold(segmentationGUI.UserData.axis, 'on');
@@ -178,15 +188,20 @@ excludedSlider.ValueChangedFcn = ...
     @(src, event) updateExcludedRegion(event.Value, segmentationGUI);
 
 % Add click callback
-segmentationGUI.WindowButtonDownFcn = @(src, event) clickCallback(segmentationGUI);
+event.listener( segmentationGUI, 'WindowMousePress' ...
+              , @(src, event) clickCallback(src, event, segmentationGUI));
 
 % Add mask to plot
-updateExcludedRegion(segmentationGUI.UserData.excludedHeight, segmentationGUI);
+updateExcludedRegion( segmentationGUI.UserData.excludedHeight ...
+                    , segmentationGUI);
 
 segmentationGUI.UserData.overlayHandle = ...
-    imshow(segmentationGUI.UserData.maskAfterExclusion, segmentationGUI.UserData.plotRange, ...
-        'Parent', segmentationGUI.UserData.axis);
-colormap(segmentationGUI.UserData.axis, segmentationGUI.UserData.gradient);
+    imshow( segmentationGUI.UserData.maskAfterExclusion ...
+          , segmentationGUI.UserData.plotRange ...
+          , 'Parent', segmentationGUI.UserData.axis);
+
+colormap( segmentationGUI.UserData.axis ...
+        , segmentationGUI.UserData.gradient);
 
 redraw(segmentationGUI);
 
@@ -194,7 +209,11 @@ hold(segmentationGUI.UserData.axis, 'off');
 
 %% Callbacks
 
-function clickCallback(fig)
+function clickCallback(~, event, fig)
+    if ~isequal(event.HitObject, fig.UserData.overlayHandle)
+        return
+    end
+
     pos = round(fig.UserData.axis.CurrentPoint(1,1:2));
     s = size(fig.UserData.mask');
 
