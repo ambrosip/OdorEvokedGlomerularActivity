@@ -12,12 +12,13 @@ plotRange = [-5, 5];
 
 % Std for the gaussian blur filter (increase to make it more blurry)
 % We blur the image to remove small variations that might affect the mask
-gaussianStd = 3.5;
+% gaussianStd = 3.5;
+gaussianStd = 1.5;
 
 % Lower threshold to exclude from the z-score mask
 % This threshold will determine the ROIs boundary
 % Increase to make ROIs smaller and exclude fainter signals
-lowerThreshold = 1.0;
+lowerThreshold = 2.0;
 
 % Disks for erosion and dilation
 % Using the same radius for both prevents merging and extra splittin
@@ -408,6 +409,26 @@ for roi=1:nROIs
 end
 
 disp("plot done")
+
+
+%% Show ROIS
+
+figName = strcat(firstAcqName(2:end), '_to_', lastAcqName(2:end), '_rois');
+fig = figure('Name',figName);
+
+if convertFrom32bit
+    avgProjection = cast(avgProjection,'uint16');
+    imshow(imadjust(avgProjection))
+else
+    imshow(imadjust(avgProjection,[0.5 0.65])) 
+end
+hold on;
+finalMaskRGB = label2rgb(dilatedMask, 'jet', 'k', 'shuffle'); 
+hOverlay = imshow(finalMaskRGB);
+alphaMap = double(dilatedMask > 0) * 0.5; 
+set(hOverlay, 'AlphaData', alphaMap);
+hold off;
+
 
 %% Save Figures
 
