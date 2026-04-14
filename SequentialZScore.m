@@ -11,13 +11,16 @@ DEPENDS on:
     (it only uses timing information + the struct s + db_trials)
 %}
 
+
 %% USER INPUT
 
 % Paths to the experiment folders to be included in the plots
 % ASSUMPTION: folders are ordered chronologically
 % USE DOUBLE QUOTES, NOT SINGLE QUOTES
+% PUT ",..." BETWEEN EXP
 expFolders = [ ...
-    "M:\ImagingData\20260311\m357"
+    "/Users/priscilla/Documents/Local - Moss Lab/20251007/sid260/e1",...
+    "/Users/priscilla/Documents/Local - Moss Lab/20251007/sid260/e2"...
     ];
 
 % File extension for the plot images
@@ -32,6 +35,7 @@ zScoreRange = [-5 10];
 % If false, it will save figure in:
 %   EXPFOLDER/processed/matlab/SCRIPT_RUN_DATE
 useSaveDir = false;
+
 
 %% Load relevant .mat files
 
@@ -63,6 +67,7 @@ for iFolder = 1:nFolders
     expData(iFolder).zScore = zScore;
 end
 
+
 %% Plot Z-Score
 
 % ALERT: 1) saves a mat file with data used in the figure
@@ -80,6 +85,7 @@ fprintf('\n');
 plotFigures(expData, fileExtension, 'dFF', dFFRange, saveFolder);
 plotFigures(expData, fileExtension, 'zScore', zScoreRange, saveFolder);
 
+
 %%  Auxiliary Functions
 
 function [expData, saveDir] = loadData(expFolder, i)
@@ -89,8 +95,11 @@ function [expData, saveDir] = loadData(expFolder, i)
 % matPaths = dir(fullfile( ...
 %     expFolder, '**', '*timeSeriesFromFijiROIs.mat'));
 
+% matPaths = dir(fullfile( ...
+%     expFolder, '**', '*masksFromZScores.mat'));
+
 matPaths = dir(fullfile( ...
-    expFolder, '**', '*masksFromZScores.mat'));
+    expFolder, '**', '*masksFromGUI.mat'));
 
 % There must be at least one output
 if isempty(matPaths)
@@ -105,14 +114,14 @@ matPath = matPaths(maxDateIndex);
 matPath = fullfile(matPath.folder, matPath.name);
 
 % Load relevant variables from .mat file
-load(matPath, ...
-    's', 'db_trials', 'firstAcqName', 'currentImgInfo', ...
-    'photobleaching_window_frames', 'photobleaching_window_s', ...
-    'frame_rate_hz', 'odor_onset_s', 'odor_dur_s', 'saveDir');
 % load(matPath, ...
-%     'fileSignals', 'db_trials', 'firstAcqName', 'currentImgInfo', ...
-%     'photobleaching_window_s', ...
-%     'frame_rate_hz', 'odor_onset_s', 'odor_dur_s'); % ALERT ALERT ALERT
+%     's', 'db_trials', 'firstAcqName', 'currentImgInfo', ...
+%     'photobleaching_window_frames', 'photobleaching_window_s', ...
+%     'frame_rate_hz', 'odor_onset_s', 'odor_dur_s', 'saveDir'); % ALERT ALERT ALERT
+load(matPath, ...
+    'fileSignals', 'db_trials', 'firstAcqName', 'currentImgInfo', ...
+    'photobleaching_window_s', ...
+    'frame_rate_hz', 'odor_onset_s', 'odor_dur_s', 'saveDir'); % ALERT ALERT ALERT
 
 % Create output struct
 
@@ -127,11 +136,11 @@ expData.folder = expFolder;
 expData.db_trials = db_trials;
 
 % Get first file signal
-files = string(fieldnames(s));
-% files = string(fieldnames(fileSignals)); % ALERT ALERT ALERT
+% files = string(fieldnames(s)); % ALERT ALERT ALERT
+files = string(fieldnames(fileSignals)); % ALERT ALERT ALERT
 firstFile = files(1);
-firstSignal = s.(firstFile);
-% firstSignal = fileSignals.(firstFile); % ALERT ALERT ALERT
+% firstSignal = s.(firstFile); % ALERT ALERT ALERT
+firstSignal = fileSignals.(firstFile); % ALERT ALERT ALERT
 
 % Get important "timestamps" (actually data points)
 baselineStart = ceil(photobleaching_window_s * frame_rate_hz);
@@ -156,8 +165,8 @@ expData.signals(expData.nFrames, expData.nFiles, expData.nROIs) = 0;
 
 for iFile = 1:expData.nFiles
     % Get signal from the stored data
-    signal = s.(files(iFile));
-    % signal = fileSignals.(files(iFile)); % ALERT ALERT ALERT
+    % signal = s.(files(iFile)); % ALERT ALERT ALERT
+    signal = fileSignals.(files(iFile)); % ALERT ALERT ALERT
 
     % Crops signal to exclude photobleaching window
     signal = signal(baselineStart:end, :);

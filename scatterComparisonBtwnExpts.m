@@ -1,9 +1,12 @@
 %% USER INPUT
 
-
-
 ylimit.dFF = 0.2;
 ylimit.zScore = 5;
+label.dFF = "dF/F";
+label.zScore = "Z-score";
+
+% ALERT: hard coded comparison between exp 1 and exp 2 or program 1 and
+% program 2
 
 
 %% CODE
@@ -25,17 +28,157 @@ namePrefix = strcat(...
     expData(end).name,"_acq_",...
     num2str(expData(end).nFiles), '_sequential');
 
-% if comparisonType == "between experiments"
-%     % check for mismatching number of acqs between expts
-%     if min(expData.nFiles) ~= max(expData.nFiles)
-%         disp("discarding extra acqs in one expt")
-%     end
-%     nFilesToCompare = min(expData.nFiles);
-%     baselinesToCompare = nan(expData.nROIs, length(expData));
-%     for expDataNum = 1:length(expData)
-%         baselinesToCompare(:,expDataNum) = 
 
-if comparisonType == "between programs"
+if comparisonType == "between experiments"
+
+    % check for mismatching number of acqs between expts
+    if min(expData.nFiles) ~= max(expData.nFiles)
+        disp("discarding extra acqs in one expt")
+    end
+    % crop number of acqs that will be analyzed
+    nFilesToCompare = min(expData.nFiles);
+
+    if expData(1).nROIs ~= expData(2).nROIs
+        disp("CRITICAL FLAG: different number of ROIs in first 2 expts")
+    end
+
+    for dataType = ["dFF", "zScore"]
+
+        % create nan array that will be filled
+        % "acq" dim 1, "ROI" dim 2 and "exp" dim 3
+        % ASSUMPTION: all expts have the same number of ROIs
+        baselinesToCompare = nan(nFilesToCompare, expData(1).nROIs, length(expData));
+
+        for expDataNum = 1:length(expData)
+    
+            % adjust first data point to 1 instead of 0
+            expData(expDataNum).baselineStart = expData(expDataNum).baselineStart + 1;     
+
+            dataToAnalyze = expData(expDataNum).(dataType);
+        
+            % == BASELINE =================================================
+            % average across frames
+            baselinesAll = mean(dataToAnalyze(expData(expDataNum).baselineStart:expData(expDataNum).baselineEnd,:,:));
+            % creates array with "acq" rows and "ROI" columns
+            baselinesAll = squeeze(baselinesAll); 
+            % crop out extra acqs
+            baselinesAll = baselinesAll(1:nFilesToCompare,:);
+            % save data for this exp
+            baselinesToCompare(:,:,expDataNum) = baselinesAll;
+            % mean across acqs, "roi" rows, "exp" columns
+            baselineAvgsToCompare = mean(baselinesToCompare);
+            baselineAvgsToCompare = squeeze(baselineAvgsToCompare);
+
+            % check if we have multiple programs inside an experiment
+            if length(unique(expData(expDataNum).db_trials.programNum)) > 1
+                disp('we have multiple programs inside multiple experiments, thanks for the mess!')
+                disp('Im not gonna deal w this rn')
+
+                % % started editing
+                % % create array with "ROI" rows and "program" columns
+                % baselinesToCompare = nan(expData(expDataNum).nROIs,length(unique(expData(expDataNum).db_trials.programNum)));
+                % % create arrays with 1 row and "program" columns
+                % lastAcqIdx = nan(1,length(unique(expData(expDataNum).db_trials.programNum)));
+                % firstAcqIdx = nan(1,length(unique(expData(expDataNum).db_trials.programNum)));
+                % totalAcqs = nan(1,length(unique(expData(expDataNum).db_trials.programNum)));
+                % for programNum = 1:length(unique(expData(expDataNum).db_trials.programNum))
+                %     allAcqIdx = expData(expDataNum).db_trials.acqIdx(expData(expDataNum).db_trials.programNum == programNum,:);
+                %     lastAcqIdx(1,expDataNum,programNum) = max(allAcqIdx);
+                %     firstAcqIdx(1,expDataNum,programNum) = min(allAcqIdx(allAcqIdx > 0));
+                %     totalAcqs(1,expDataNum,programNum) = lastAcqIdx(1,expDataNum,programNum) - firstAcqIdx(1,expDataNum,programNum) + 1;
+                %     baselinesToCompare(:,expDataNum,programNum) = mean(baselinesAll(firstAcqIdx(1,expDataNum,programNum):lastAcqIdx(1,expDataNum,programNum),:))';
+                % end               
+
+                % % did not even start editing
+                % if totalAcqs(1) < totalAcqs(2)
+                %     disp("we have more acqs in exp2 bro")
+                %     lastAcqIdx(2) = lastAcqIdx(2) - (totalAcqs(2) - totalAcqs(1)); % CHECK MATH ALERT
+                % elseif totalAcqs(1) > totalAcqs(2)
+                %     disp("we have more acqs in exp1 bro")
+                %     lastAcqIdx(1) = lastAcqIdx(1) - (totalAcqs(1) - totalAcqs(2));
+                % else
+                %     disp("good job, we have the same number of acqs in both expts")
+                % end
+            end
+        end
+
+        dataToAnalyzeExp1 = expData(1).(dataType);
+        dataToAnalyzeExp2 = expData(2).(dataType);
+
+        % == ODOR-EVOKED ==============================================
+        % hard coded comparison between exp 1 and exp 2
+        % average across frames
+        allOdorDataExp1 = mean(dataToAnalyzeExp1(expData(1).odorStart:expData(1).odorEnd,:,:));
+        allOdorDataExp2 = mean(dataToAnalyzeExp2(expData(2).odorStart:expData(2).odorEnd,:,:));
+        % create array with "acq" rows and "ROI" columns
+        allOdorDataExp1 = squeeze(allOdorDataExp1);
+        allOdorDataExp2 = squeeze(allOdorDataExp2);
+
+        % get data from odors that exist in both exp 1 and exp 2
+        for odorID = unique(expData(1).db_trials.odorID)'
+            if ismember(odorID, unique(expData(2).db_trials.odorID)')
+                thisOdorExp1AcqIdx = expData(1).db_trials.acqIdx(expData(1).db_trials.odorID == odorID,:);
+                thisOdorExp2AcqIdx = expData(2).db_trials.acqIdx(expData(2).db_trials.odorID == odorID,:);
+                if length(thisOdorExp1AcqIdx) ~= length(thisOdorExp2AcqIdx)
+                    nAcqsToCompare = min(length(thisOdorExp1AcqIdx), length(thisOdorExp2AcqIdx));
+                    thisOdorExp1AcqIdx = thisOdorExp1AcqIdx(1:nAcqsToCompare,:);
+                    thisOdorExp2AcqIdx = thisOdorExp2AcqIdx(1:nAcqsToCompare,:);
+                end
+       
+                figure('Name',strcat(namePrefix, "_", dataType, "_odor_", num2str(odorID)))
+                nexttile
+                    for roi = 1:expData(1).nROIs
+                        scatter(allOdorDataExp1(thisOdorExp1AcqIdx',roi),allOdorDataExp2(thisOdorExp2AcqIdx',roi))
+                        hold on;
+                    end   
+                    plot([-ylimit.(dataType),ylimit.(dataType)],[-ylimit.(dataType),ylimit.(dataType)], 'k')
+                    axis([-ylimit.(dataType),ylimit.(dataType),-ylimit.(dataType),ylimit.(dataType)])
+                    ylabel(strcat(label.(dataType), " post-treatment"))
+                    xlabel(strcat(label.(dataType), " pre-treatment"))
+                    title('Odor-evoked signal per ROI & Acq',strcat(expData(1).name, "_odor_", num2str(odorID)),'Interpreter','none')
+                    axis square
+                nexttile
+                    scatter(mean(allOdorDataExp1(thisOdorExp1AcqIdx',:)),mean(allOdorDataExp2(thisOdorExp2AcqIdx',:)),"*")  
+                    hold on;
+                    plot([-ylimit.(dataType),ylimit.(dataType)],[-ylimit.(dataType),ylimit.(dataType)], 'k')
+                    axis([-ylimit.(dataType),ylimit.(dataType),-ylimit.(dataType),ylimit.(dataType)])
+                    ylabel(strcat(label.(dataType), " post-treatment"))
+                    xlabel(strcat(label.(dataType), " pre-treatment"))
+                    title('Mean odor-evoked signal per ROI',strcat(expData(1).name, "_odor_", num2str(odorID)),'Interpreter','none')
+                    axis square
+                    set(gcf, 'Position', [50 50 700 350])    % x y width height
+            end
+        end
+
+
+        % == BASELINE PLOT ================================================
+        figure('Name',strcat(namePrefix, "_", dataType, "_baselines"))
+        nexttile
+            for roi = 1:expData(1).nROIs
+                % compare exp 1 and 2
+                scatter(baselinesToCompare(:,roi,1),baselinesToCompare(:,roi,2))
+                hold on;
+            end   
+            plot([-ylimit.(dataType),ylimit.(dataType)],[-ylimit.(dataType),ylimit.(dataType)], 'k')
+            axis([-ylimit.(dataType),ylimit.(dataType),-ylimit.(dataType),ylimit.(dataType)])
+            ylabel(strcat(label.(dataType), " post-treatment"))
+            xlabel(strcat(label.(dataType), " pre-treatment"))
+            title('Pre-odor signal per ROI & Acq',expData(1).name,'Interpreter','none')
+            axis square
+        nexttile  
+            % compare exp and exp 2
+            scatter(baselineAvgsToCompare(:,1),baselineAvgsToCompare(:,2),"*")
+            hold on;
+            plot([-ylimit.(dataType),ylimit.(dataType)],[-ylimit.(dataType),ylimit.(dataType)], 'k')
+            axis([-ylimit.(dataType),ylimit.(dataType),-ylimit.(dataType),ylimit.(dataType)])
+            ylabel(strcat(label.(dataType), " post-treatment"))
+            xlabel(strcat(label.(dataType), " pre-treatment"))
+            title('Mean pre-odor signal per ROI',expData(1).name,'Interpreter','none')
+            axis square
+            set(gcf, 'Position', [50 50 700 350])    % x y width height       
+    end
+
+elseif comparisonType == "between programs"
 
     for dataType = ["dFF", "zScore"]
 
@@ -81,8 +224,8 @@ if comparisonType == "between programs"
             end   
             plot([-ylimit.(dataType),ylimit.(dataType)],[-ylimit.(dataType),ylimit.(dataType)], 'k')
             axis([-ylimit.(dataType),ylimit.(dataType),-ylimit.(dataType),ylimit.(dataType)])
-            ylabel(strcat(dataType, " post-treatment"))
-            xlabel(strcat(dataType, " pre-treatment"))
+            ylabel(strcat(label.(dataType), " post-treatment"))
+            xlabel(strcat(label.(dataType), " pre-treatment"))
             title('Pre-odor signal per ROI',expData(1).name,'Interpreter','none')
             axis square
         nexttile  
@@ -90,8 +233,8 @@ if comparisonType == "between programs"
             hold on;
             plot([-ylimit.(dataType),ylimit.(dataType)],[-ylimit.(dataType),ylimit.(dataType)], 'k')
             axis([-ylimit.(dataType),ylimit.(dataType),-ylimit.(dataType),ylimit.(dataType)])
-            ylabel(strcat(dataType, " post-treatment"))
-            xlabel(strcat(dataType, " pre-treatment"))
+            ylabel(strcat(label.(dataType), " post-treatment"))
+            xlabel(strcat(label.(dataType), " pre-treatment"))
             title('Mean pre-odor signal per ROI',expData(1).name,'Interpreter','none')
             axis square
             set(gcf, 'Position', [50 50 700 350])    % x y width height
@@ -119,8 +262,8 @@ if comparisonType == "between programs"
                 end   
                 plot([-ylimit.(dataType),ylimit.(dataType)],[-ylimit.(dataType),ylimit.(dataType)], 'k')
                 axis([-ylimit.(dataType),ylimit.(dataType),-ylimit.(dataType),ylimit.(dataType)])
-                ylabel(strcat(dataType, " post-treatment"))
-                xlabel(strcat(dataType, " pre-treatment"))
+                ylabel(strcat(label.(dataType), " post-treatment"))
+                xlabel(strcat(label.(dataType), " pre-treatment"))
                 title('Odor-evoked signal per ROI',strcat(expData(1).name, "_odor_", num2str(odorID)),'Interpreter','none')
                 axis square
             nexttile
@@ -128,8 +271,8 @@ if comparisonType == "between programs"
                 hold on;
                 plot([-ylimit.(dataType),ylimit.(dataType)],[-ylimit.(dataType),ylimit.(dataType)], 'k')
                 axis([-ylimit.(dataType),ylimit.(dataType),-ylimit.(dataType),ylimit.(dataType)])
-                ylabel(strcat(dataType, " post-treatment"))
-                xlabel(strcat(dataType, " pre-treatment"))
+                ylabel(strcat(label.(dataType), " post-treatment"))
+                xlabel(strcat(label.(dataType), " pre-treatment"))
                 title('Mean odor-evoked signal per ROI',strcat(expData(1).name, "_odor_", num2str(odorID)),'Interpreter','none')
                 axis square
                 set(gcf, 'Position', [50 50 700 350])    % x y width height

@@ -27,7 +27,10 @@ DEPENDS on:
 %% USER INPUT
 
 % Experiment folder
-expFolder = "/Volumes/MossLab/ImagingData/20260330/m357/e1";
+expFolder = "/Users/priscilla/Documents/Local - Moss Lab/20251007/sid260/e2";
+
+% Do you want to save movies as tiff too?
+saveAsTiff = 0;
 
 % Define the colors
 max_df_color = [103 0 31] / 255;
@@ -38,6 +41,7 @@ plotRange = [-5, 5];
 
 % How many seconds in the rolling window
 secondsRollingWindow = .5;
+
 
 %% Creates Diverging Colormap
 
@@ -297,3 +301,59 @@ for iMovie = 1:nMovies
 end
 
 fprintf("[INFO] Finished saving!\n")
+
+
+%% Save movies as TIFF
+
+if saveAsTiff == 1
+
+    fprintf("[INFO] Saving %d movies:\n", nMovies);
+    
+    todayStr = string(datetime('Today'), 'yyyy-MM-dd');
+    saveFolder = fullfile(expFolder, ...
+        'processed', 'matlab', todayStr);
+    
+    if ~isfolder(saveFolder)
+        mkdir(saveFolder);
+    end
+    
+    for iMovie = 1:nMovies
+        for outcome = ["hit" "miss" "false" "na"]
+            % Don't create a movie if there is no data
+            if zScoreMovies(iMovie).(outcome).total == 0
+                continue
+            end
+    
+            tiffName = sprintf( ...
+                "zScoreMovie_%s_%s_odor_%d_outcome_%s.tif", ...
+                zScoreMovies(iMovie).program, ...
+                zScoreMovies(iMovie).type, ...
+                zScoreMovies(iMovie).odor, ...
+                outcome);
+            tiffPath = fullfile(saveFolder, tiffName);
+            fprintf("[INFO]   Movie %d -> %s\n", iMovie, tiffName);
+    
+            movie = zScoreMovies(iMovie).(outcome).movie;
+            t = Tiff(tiffPath, "w");
+    
+            for iFrame = 1:size(zScoreMovies(iMovie).(outcome).movie, 3)
+                tagstruct.ImageLength = size(movie, 1);
+                tagstruct.ImageWidth = size(movie, 2);
+                tagstruct.Photometric = Tiff.Photometric.MinIsBlack;
+                tagstruct.SampleFormat = Tiff.SampleFormat.IEEEFP;
+                tagstruct.BitsPerSample = 32;
+    
+                t.setTag(tagstruct);
+                t.write(single(movie(:, :, iFrame)));
+    
+                if iFrame < size(movie, 3)
+                    t.writeDirectory();
+                end
+            end
+    
+            t.close();
+        end
+    end
+    
+    fprintf("[INFO] Finished saving!\n")
+end
