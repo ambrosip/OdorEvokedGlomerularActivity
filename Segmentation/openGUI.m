@@ -18,21 +18,27 @@ DEPENDS:
 %}
 
 
-%% Compute Z-score envelope
+% %% Compute Z-score envelope
+% 
+% imageSize = size(figures(1).na.image);
+% 
+% minEnvelope = zeros(imageSize);
+% maxEnvelope = zeros(imageSize);
+% 
+% for iFigure = 1:length(figures)
+%     minEnvelope = min(minEnvelope, figures(iFigure).na.image);
+%     maxEnvelope = max(maxEnvelope, figures(iFigure).na.image);
+% end
+% 
+% zScoreEnvelope = ...
+%         (abs(minEnvelope) >= abs(maxEnvelope)) .* minEnvelope + ...
+%         (abs(minEnvelope) < abs(maxEnvelope)) .* maxEnvelope;
 
-imageSize = size(figures(1).na.image);
 
-minEnvelope = zeros(imageSize);
-maxEnvelope = zeros(imageSize);
+%% Compute Z-score envelope (PA)
 
-for iFigure = 1:length(figures)
-    minEnvelope = min(minEnvelope, figures(iFigure).na.image);
-    maxEnvelope = max(maxEnvelope, figures(iFigure).na.image);
-end
+zScoreEnvelope = figures(4).na.image;
 
-zScoreEnvelope = ...
-        (abs(minEnvelope) >= abs(maxEnvelope)) .* minEnvelope + ...
-        (abs(minEnvelope) < abs(maxEnvelope)) .* maxEnvelope;
 
 %% Create GUI
 

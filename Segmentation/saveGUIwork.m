@@ -1,6 +1,8 @@
 %% USER INPUT
 % REMEMBER TO CLOSE GUI BEFORE ADVANCING PAST SAVE MASK SESSION
 
+expDir = '/Volumes/MossLab/ImagingData/20260316/m357/e1'
+
 useRoisFromOtherExp = 0;
 matDirWithMaskInfo = "/Users/priscilla/Documents/Local - Moss Lab/20251007/sid260/e1/processed/matlab/2026-04-14/a20251007_sid260_e1_0_to_a20251007_sid260_e1_0_2026-04-14_masksFromGUI.mat";
 should_I_plot_dFF = 1;
@@ -16,7 +18,7 @@ lastAcq = 2;
 saveFigs = 1;
 saveWorkspace = 1;
 
-manual_y_limits = 0;
+manual_y_limits = 1;
 ymax = 10;
 ymin = -10;
 
@@ -247,6 +249,7 @@ for programNum = unique(db_trials.programNum)'
 
             acqsIdxToKeep = db_trials.acqIdx(rowsToKeep);
             acqsIdxToKeep = rmmissing(acqsIdxToKeep); % remove nans
+            acqsIdxToKeep = acqsIdxToKeep(acqsIdxToKeep ~= 0); % remove zeros
             acqsTotal = numel(acqsIdxToKeep);
 
             fieldnamesToKeep = fileZdFF_fieldnames(acqsIdxToKeep);
