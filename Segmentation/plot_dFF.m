@@ -1,204 +1,11 @@
-%% USER INPUT
-% REMEMBER TO CLOSE GUI BEFORE ADVANCING PAST SAVE MASK SESSION
-
-useRoisFromOtherExp = 0;
-matDirWithMaskInfo = "/Users/priscilla/Documents/Local - Moss Lab/20251007/sid260/e1/processed/matlab/2026-04-14/a20251007_sid260_e1_0_to_a20251007_sid260_e1_0_2026-04-14_masksFromGUI.mat";
-should_I_plot_dFF = 1;
-visibility = 'off';
-
-% if using mcor files from odyn (caiman python)
-convertFrom32bit = true;
-
-plotSubset = 0;
-firstAcq = 1;
-lastAcq = 2; 
-
-saveFigs = 1;
-saveWorkspace = 1;
-
-manual_y_limits = 0;
-ymax = 10;
-ymin = -10;
-
-manual_x_limits = 0;
-xmin = -2;
-xmax = 4;
-
-
-%% Saves final mask from GUI
-
-if useRoisFromOtherExp == 1
-    load(matDirWithMaskInfo,'finalMask','nROIs','labelRGB')
-else
-    [finalMask, nROIs] = bwlabel(segmentationGUI.UserData.maskAfterExclusion > 0, 4);
-    labelRGB = label2rgb(finalMask, 'jet', 'k', 'shuffle'); 
-    segmentationGUI_UserData = segmentationGUI.UserData;
-end
-
-% CLOSE GUI BEFORE CONTINUING
-
-
-%% Save workspace
-
-% Create naming variables
-todayStr = string(datetime('Today'), 'yyyy-MM-dd');
-saveFolder = fullfile(expDir, 'processed', 'matlab', todayStr);
-firstAcquisitionName = firstAcqName(1:end-9);
-lastAcquisitionName = lastAcqName(1:end-9);
-
-% create saveFolder if needed
-% check if saveFolder exists
-if not(isfolder(saveFolder))
-    % create saveFolder
-    mkdir(saveFolder);
-end
-
-matFileName = strcat(firstAcquisitionName, '_to_', ...
-    lastAcquisitionName, '_', todayStr, '_masksFromGUI');
-save(fullfile(saveFolder, matFileName));
-disp('I saved the mat file');
-
-
-%% Make z-proj of 1st mcor file for ROI labeling
-
-if exist('patchwarp','var')
-    if patchwarp == 1
-        getFileDirs_patchwarp
-    else
-        getFileDirs
-    end
-else
-    getFileDirs
-end
-
-getImgDirs
-
-filename = imgsToAnalyzeDirs(1).name;
-fileDir = imgsToAnalyzeDirs(1).folder;
-filepath = fullfile(fileDir, filename);
-imgToProject = imread(filepath);
-avgProjection = mean(imgToProject, 3);
-
-
-%% Show ROIS
-
-figName = strcat(firstAcqName(2:end), '_to_', lastAcqName(2:end), '_rois');
-fig = figure('Name',figName);
-
-if convertFrom32bit
-    avgProjection = cast(avgProjection,'uint16');
-    imshow(imadjust(avgProjection))
-else
-    imshow(imadjust(avgProjection,[0.5 0.65])) 
-end
-hold on;
-finalMaskRGB = label2rgb(finalMask, 'jet', 'k', 'shuffle'); 
-hOverlay = imshow(finalMaskRGB);
-alphaMap = double(finalMask > 0) * 0.5; 
-set(hOverlay, 'AlphaData', alphaMap);
-hold off;
-
-
-%% Get fluorescence in fiji ROIs for each file/acquisition
-% ADAPTED FROM TimeSeriesFromFijiROIsZscores (TODO: CLEAN UP)
-
-for file = 1:imgsToAnalyze_numberOf
-    
-    % get OS-appropriate file dir
-    imgToAnalyzeFileDir = fullfile(imgsToAnalyzeFolder, ...
-        imgsToAnalyzeDirs(file).name);
-
-    % get img file name without extension (stored in "f")
-    [p,f,e] = fileparts(imgsToAnalyzeNames(file));
-
-    % add "a" in front of the filename in f to build a structure later
-    % why? matlab freaks out if field names of a structure start with numbers
-    f = {strcat('a', cell2mat(f))};
-
-    % get img info
-    imgInfo = imfinfo(imgToAnalyzeFileDir);
-    nFrames = length(imgInfo);
-
-    % Load whole movie and shift to be positive by adding min int16 value
-    movieToAnalyze = single(tiffreadVolume(imgToAnalyzeFileDir));
-    movieToAnalyze = movieToAnalyze + 32768;
-    
-    % Initialize a matrix of the correct size
-    % The value 0.0 will be overwritten later
-    meanPerROI(nFrames, nROIs) = 0.0;
-
-    for iROI = 1:nROIs
-        ROIMask = single(finalMask == iROI);
-        nPixelInROI = sum(ROIMask, "all");
-        
-        meanPerROI(:,iROI) = sum(ROIMask .* movieToAnalyze, [1, 2]);
-        meanPerROI(:,iROI) = meanPerROI(:, iROI) / nPixelInROI;
-    end
-
-    fileSignals.(f{1}) = meanPerROI;
-    disp(strcat("Finished processing ROIs in file ", f))
-end
-
-
-%% Calculate Z-Scores of dF/F for each ROI across files
-
-lastAcq = imgsToAnalyze_numberOf;
-
-if plotSubset
-    firstAcq = 1;
-    lastAcq = length(imgToAnalyzeFileDir);
-end
-
-aFilenames = fieldnames(fileSignals);
-firstAcquisitionName = aFilenames{firstAcq};
-lastAcquisitionName = aFilenames{lastAcq};
-
-photobleachingWindowEnd = round(photobleaching_window_s * frame_rate_hz);
-adjustedBaselineEnd = round( ...
-    (baseline_dur_s - photobleaching_window_s) * frame_rate_hz);
-
-for file = firstAcq:lastAcq
-    croppedSignal = fileSignals.(aFilenames{file});
-    croppedSignal = croppedSignal(photobleachingWindowEnd:end, :);
-
-    baseline = croppedSignal(1:adjustedBaselineEnd, :);
-    meanBaseline = mean(baseline, 1, 'omitnan');
-    
-    dFF = (croppedSignal - meanBaseline) ./ meanBaseline;
-    baseline = dFF(1:adjustedBaselineEnd, :);
-    file_dFF.(aFilenames{file}) = dFF;
-    
-    zdFF = (dFF - mean(baseline, 1)) ./ std(baseline, 0, 1);
-    fileZdFF.(aFilenames{file}) = zdFF;
-end
-
-% create x axis in seconds and adjust it based on the photobleaching window
-croppedSignalFrames = size(croppedSignal, 1);
-adjustedImageDuration = croppedSignalFrames / frame_rate_hz;
-adjusted_baseline_dur_s = baseline_dur_s - photobleaching_window_s;
-
-odorOnset = adjusted_baseline_dur_s;
-odorOffset = adjusted_baseline_dur_s + odor_dur_s;
-xs = linspace(-odorOnset, adjustedImageDuration - odorOnset, ...
-    croppedSignalFrames);
-
-disp("Calculated Z-scores of dF/F")
-
-
-%% Save mat file so far
-
-save(fullfile(saveFolder, matFileName));
-disp('I saved the mat file')
-
-
-%% Prep for z plots
+%% Prep for dFF plots
 
 if manual_y_limits == 0
     % Gets the first integer below min and first above max
     ymax = ceil(max(structfun(@(x) max(x,[],'all'), ...
-        fileZdFF,'UniformOutput',true)));
+        file_dFF,'UniformOutput',true)));
     ymin = floor(min(structfun(@(x) min(x,[],'all'), ...
-        fileZdFF,'UniformOutput',true)));
+        file_dFF,'UniformOutput',true)));
 end
 
 if manual_x_limits == 0
@@ -228,8 +35,8 @@ columns = programsToAnalyze + 1;
 %% Get average z-score per odor per block (i.e. program) per roi
 
 % Get size from first zdFF matrix (frames per ROIs)
-fileZdFF_fieldnames = fieldnames(fileZdFF);
-[nFrames, nROIs] = size(fileZdFF.(fileZdFF_fieldnames{1}));
+file_dFF_fieldnames = fieldnames(file_dFF);
+[nFrames, nROIs] = size(file_dFF.(file_dFF_fieldnames{1}));
 
 for programNum = unique(db_trials.programNum)'
     rowsToKeep_thisProgram = ismember(db_trials.programNum, programNum);
@@ -249,7 +56,7 @@ for programNum = unique(db_trials.programNum)'
             acqsIdxToKeep = rmmissing(acqsIdxToKeep); % remove nans
             acqsTotal = numel(acqsIdxToKeep);
 
-            fieldnamesToKeep = fileZdFF_fieldnames(acqsIdxToKeep);
+            fieldnamesToKeep = file_dFF_fieldnames(acqsIdxToKeep);
             nAcq = length(fieldnamesToKeep);
 
             % Skips this combination of program, odor, outcome if there are
@@ -267,7 +74,7 @@ for programNum = unique(db_trials.programNum)'
             % Concatenate all zdFF into a nFrames x nROIs x nAcq matrix
             for iAcquisition = 1:length(fieldnamesToKeep)
                 fieldname = fieldnamesToKeep{iAcquisition};
-                allFrames_allROIs_thisAcq = fileZdFF.(fieldname);
+                allFrames_allROIs_thisAcq = file_dFF.(fieldname);
                 allFrames_allROIs_allAcq(:, :, iAcquisition) = ...
                     allFrames_allROIs_thisAcq;
             end
@@ -287,11 +94,11 @@ for programNum = unique(db_trials.programNum)'
             outcomeFieldName = outcome;
 
             % Add new matrix to the structure
-            s_mean_zscore.(programFieldName).(odorFieldName).(outcomeFieldName) = ...
+            s_mean_dFF.(programFieldName).(odorFieldName).(outcomeFieldName) = ...
                 allFrames_allROIs_meanAcq;
 
             % Also, storing the matrix before averaging
-            s_zscore.(programFieldName).(odorFieldName).(outcomeFieldName) = ...
+            s_dFF.(programFieldName).(odorFieldName).(outcomeFieldName) = ...
                 allFrames_allROIs_allAcq;
 
             % TO DO: s_mean_zscore is redundant, remove it by changing
@@ -303,7 +110,7 @@ end
 
 %% PLOT AVGS - all outcomes (with SEM), color-coded by outcome (or odor, if outcome is nan)
 
-allProgramFieldName = fieldnames(s_zscore);
+allProgramFieldName = fieldnames(s_dFF);
 
 % (number of odors) x (number of programs + extra columns)
 % The extra columns are to put the plot showing the ROI
@@ -319,9 +126,9 @@ for iROI = 1:nROIs
     % Create one figure per ROI
     figName = strcat( ...
         firstAcquisitionName, '_to_', lastAcquisitionName, ...
-        '_roi_', num2str(iROI), '_zdFF_SEM');
+        '_roi_', num2str(iROI), '_dFF_SEM');
 
-    fig = figure('Name', figName, 'Visible',visibility);
+    fig = figure('Name', figName,'Visible',visibility);
 
     % Create tiledlayout of shape odors by programs
     t = tiledlayout(rows, columns);
@@ -331,7 +138,7 @@ for iROI = 1:nROIs
     for iProgram = 1:length(allProgramFieldName)
         % Get the struct to shorten the names in the next for loops
         programFieldName = allProgramFieldName{iProgram};        
-        programStruct = s_zscore.(programFieldName);
+        programStruct = s_dFF.(programFieldName);
         allOdorFieldName = fieldnames(programStruct);
 
         % Get program type to make tile title
@@ -410,7 +217,7 @@ for iROI = 1:nROIs
             title(strcat(odorFieldName, '_', programType), ...
                 'Interpreter', 'none');
             xlabel('Time from odor onset (s)')
-            ylabel('dF/F Z-score')
+            ylabel('dF/F')
             xticks([xmin,0,1,xmax]);
             yticks([ymin,0,ymax]);           
         end
@@ -437,38 +244,3 @@ for iROI = 1:nROIs
     t.Padding = 'compact';
     disp(strcat("plot roi ", num2str(iROI), " done"))
 end
-
-
-%% Plot dFF (if user wants it)
-
-if should_I_plot_dFF == 1
-    plot_dFF
-end
-
-
-%% Save figs
-
-if saveFigs
-    FigList = findobj(allchild(0), 'flat', 'Type', 'figure');
-    
-    % save all open figs
-    for iFig = 1:length(FigList)
-      FigHandle = FigList(iFig);
-      FigName = FigList(iFig).Name;
-      set(0, 'CurrentFigure', FigHandle);
-      % forces matlab to save fig as a vector
-      FigHandle.Renderer = 'painters';  
-      % actually saves a vector file
-      saveas(FigHandle,fullfile(saveFolder, [FigName '.svg']));
-    end 
-    disp('saved all figs')
-    close all
-end
-
-
-%% Save workspace
-
-matFileName = strcat(firstAcquisitionName, '_to_', ...
-    lastAcquisitionName, '_', todayStr, '_masksFromGUI');
-save(fullfile(saveFolder, matFileName));
-disp('I saved the mat file');
