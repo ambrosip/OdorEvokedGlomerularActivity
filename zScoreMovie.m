@@ -15,10 +15,13 @@ STEPS:
     5) Computes the z-score using mean and std of the whole movie.
     6) Saves the result to an .avi file. (This recording starts 
         at the first frame of the baseline window.)
+    7) Saves the resuls to a .tif file to be used for segmentation
+
 ALERT: 
     1) Odor presentation window is marked with a red circle in the video.
     2) We average across acquisitions before computing dF/F.
     3) Don't save the workspace (it's too big).
+    4) Saves to processed > matlab > movies
 
 DEPENDS on:
     mat file from preProcessing
@@ -27,7 +30,7 @@ DEPENDS on:
 %% USER INPUT
 
 % Experiment folder
-expFolder = "/Volumes/MossLab/ImagingData/20260311/m316";
+expFolder = "/Volumes/MossLab/ImagingData/20260309/m357";
 
 % Do you want to save movies as tiff too?
 saveAsTiff = 1;
@@ -53,6 +56,7 @@ colorpoints = linspace(0.0, 1.0, 512);
 % https://www.kennethmoreland.com/color-maps/
 divergingGradient = divergingMap(colorpoints, min_df_color, max_df_color);
 
+
 %% Compute Timing Info
 
 frameOdorOnset = round(odor_onset_s * frame_rate_hz);
@@ -68,7 +72,8 @@ frameBaselineStart = frameOdorOnset - framesRollingWindow;
 frameOdorOnsetFromBaseline = framesRollingWindow + 1;
 frameOdorOffsetFromBaseline = framesRollingWindow + frameOdorDuration;
 
-%% Get mcor File Paths
+
+%% Get mcor File Paths and saveFolder
 
 expDir = expFolder;
 
@@ -84,6 +89,15 @@ end
 
 getImgDirs
 
+todayStr = string(datetime('Today'), 'yyyy-MM-dd');
+analysisDate = todayStr;
+saveFolder = fullfile(expFolder, ...
+    'processed', 'matlab', 'movies');
+
+if ~isfolder(saveFolder)
+    mkdir(saveFolder);
+end
+
 % Assumes the default folder structure for a experiment
 % mcorFolder = fullfile(expFolder, 'processed', 'mcor');
 mcorFolder = mcorImgDir;
@@ -96,6 +110,7 @@ if isempty(mcorFilePaths), error("mcor folder is empty."); end
 % Make sure they are in the right order
 [~, ind] = sort({mcorFilePaths.name});
 mcorFilePaths = mcorFilePaths(ind);
+
 
 %% Compute Average Signals
 
@@ -252,14 +267,6 @@ end
 
 fprintf("[INFO] Saving %d movies:\n", nMovies);
 
-todayStr = string(datetime('Today'), 'yyyy-MM-dd');
-saveFolder = fullfile(expFolder, ...
-    'processed', 'matlab', todayStr);
-
-if ~isfolder(saveFolder)
-    mkdir(saveFolder);
-end
-
 % Make all imshow figures borderless
 iptsetpref('ImshowBorder', 'tight');
 
@@ -328,15 +335,7 @@ fprintf("[INFO] Finished saving!\n")
 if saveAsTiff == 1
 
     fprintf("[INFO] Saving %d movies:\n", nMovies);
-    
-    todayStr = string(datetime('Today'), 'yyyy-MM-dd');
-    saveFolder = fullfile(expFolder, ...
-        'processed', 'matlab', todayStr);
-    
-    if ~isfolder(saveFolder)
-        mkdir(saveFolder);
-    end
-    
+        
     for iMovie = 1:nMovies
         for outcome = ["hit" "miss" "false" "na"]
             % Don't create a movie if there is no data
