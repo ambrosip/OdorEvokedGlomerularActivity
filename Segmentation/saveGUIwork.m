@@ -1,11 +1,12 @@
 %% USER INPUT
 % REMEMBER TO CLOSE GUI BEFORE ADVANCING PAST SAVE MASK SESSION
 
-expDir = '/Volumes/MossLab/ImagingData/20260316/m357/e1'
+expDir = '/Users/priscilla/Documents/Local - Moss Lab/20251007/sid260/e1';
 
 useRoisFromOtherExp = 0;
-matDirWithMaskInfo = "/Users/priscilla/Documents/Local - Moss Lab/20251007/sid260/e1/processed/matlab/2026-04-14/a20251007_sid260_e1_0_to_a20251007_sid260_e1_0_2026-04-14_masksFromGUI.mat";
-should_I_plot_dFF = 1;
+useRoisFromPython = 1;
+matDirWithMaskInfo = "/Users/priscilla/Documents/Local - Moss Lab/mask.mat";
+should_I_plot_dFF = 0;
 visibility = 'off';
 
 % if using mcor files from odyn (caiman python)
@@ -19,8 +20,8 @@ saveFigs = 1;
 saveWorkspace = 1;
 
 manual_y_limits = 1;
-ymax = 10;
-ymin = -10;
+ymax = 25;
+ymin = -5;
 
 manual_x_limits = 0;
 xmin = -2;
@@ -31,6 +32,11 @@ xmax = 4;
 
 if useRoisFromOtherExp == 1
     load(matDirWithMaskInfo,'finalMask','nROIs','labelRGB')
+elseif useRoisFromPython == 1
+    load(matDirWithMaskInfo,'all_mask')
+    nROIs = max(all_mask(:));
+    finalMask = all_mask;
+    labelRGB = label2rgb(finalMask, 'jet', 'k', 'shuffle'); 
 else
     [finalMask, nROIs] = bwlabel(segmentationGUI.UserData.maskAfterExclusion > 0, 4);
     labelRGB = label2rgb(finalMask, 'jet', 'k', 'shuffle'); 
@@ -82,23 +88,23 @@ imgToProject = imread(filepath);
 avgProjection = mean(imgToProject, 3);
 
 
-%% Show ROIS
-
-figName = strcat(firstAcqName(2:end), '_to_', lastAcqName(2:end), '_rois');
-fig = figure('Name',figName);
-
-if convertFrom32bit
-    avgProjection = cast(avgProjection,'uint16');
-    imshow(imadjust(avgProjection))
-else
-    imshow(imadjust(avgProjection,[0.5 0.65])) 
-end
-hold on;
-finalMaskRGB = label2rgb(finalMask, 'jet', 'k', 'shuffle'); 
-hOverlay = imshow(finalMaskRGB);
-alphaMap = double(finalMask > 0) * 0.5; 
-set(hOverlay, 'AlphaData', alphaMap);
-hold off;
+% %% Show ROIS
+% 
+% figName = strcat(firstAcqName(2:end), '_to_', lastAcqName(2:end), '_rois');
+% fig = figure('Name',figName);
+% 
+% if convertFrom32bit
+%     avgProjection = cast(avgProjection,'uint16');
+%     imshow(imadjust(avgProjection))
+% else
+%     imshow(imadjust(avgProjection,[0.5 0.65])) 
+% end
+% hold on;
+% finalMaskRGB = label2rgb(finalMask, 'jet', 'k', 'shuffle'); 
+% hOverlay = imshow(finalMaskRGB);
+% alphaMap = double(finalMask > 0) * 0.5; 
+% set(hOverlay, 'AlphaData', alphaMap);
+% hold off;
 
 
 %% Get fluorescence in fiji ROIs for each file/acquisition
@@ -166,11 +172,12 @@ for file = firstAcq:lastAcq
     baseline = croppedSignal(1:adjustedBaselineEnd, :);
     meanBaseline = mean(baseline, 1, 'omitnan');
     
-    dFF = (croppedSignal - meanBaseline) ./ meanBaseline;
-    baseline = dFF(1:adjustedBaselineEnd, :);
+    dFF = (croppedSignal - meanBaseline) ./ meanBaseline; 
+    baseline = dFF(1:adjustedBaselineEnd, :); % comment out if you want to calculate the zscore from F instead of dF
     file_dFF.(aFilenames{file}) = dFF;
     
-    zdFF = (dFF - mean(baseline, 1)) ./ std(baseline, 0, 1);
+    zdFF = (dFF - mean(baseline, 1)) ./ std(baseline, 0, 1); % comment if you want to calculate the zscore from F instead of dF
+    % zdFF = (croppedSignal - meanBaseline) ./ std(baseline, 0, 1); % uncomment out if you want to calculate the zscore from F instead of dF
     fileZdFF.(aFilenames{file}) = zdFF;
 end
 
@@ -189,8 +196,28 @@ disp("Calculated Z-scores of dF/F")
 
 %% Save mat file so far
 
+close all
 save(fullfile(saveFolder, matFileName));
 disp('I saved the mat file')
+
+
+%% Show ROIS
+
+figName = strcat(firstAcqName(2:end), '_to_', lastAcqName(2:end), '_rois');
+fig = figure('Name',figName);
+
+if convertFrom32bit
+    avgProjection = cast(avgProjection,'uint16');
+    imshow(imadjust(avgProjection))
+else
+    imshow(imadjust(avgProjection,[0.5 0.65])) 
+end
+hold on;
+finalMaskRGB = label2rgb(finalMask, 'jet', 'k', 'shuffle'); 
+hOverlay = imshow(finalMaskRGB);
+alphaMap = double(finalMask > 0) * 0.5; 
+set(hOverlay, 'AlphaData', alphaMap);
+hold off;
 
 
 %% Prep for z plots
@@ -325,6 +352,7 @@ for iROI = 1:nROIs
         '_roi_', num2str(iROI), '_zdFF_SEM');
 
     fig = figure('Name', figName, 'Visible',visibility);
+    % fig = figure('Name', figName, 'Visible',"on");
 
     % Create tiledlayout of shape odors by programs
     t = tiledlayout(rows, columns);

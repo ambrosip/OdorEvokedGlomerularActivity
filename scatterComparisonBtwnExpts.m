@@ -1,7 +1,7 @@
 %% USER INPUT
 
 ylimit.dFF = 0.2;
-ylimit.zScore = 5;
+ylimit.zScore = 10;
 label.dFF = "dF/F";
 label.zScore = "Z-score";
 
