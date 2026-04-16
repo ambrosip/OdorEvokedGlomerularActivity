@@ -1,11 +1,11 @@
 %% USER INPUT
 % REMEMBER TO CLOSE GUI BEFORE ADVANCING PAST SAVE MASK SESSION
 
-expDir = '/Users/priscilla/Documents/Local - Moss Lab/20251007/sid260/e1';
+expDir = '/Users/priscilla/Documents/Local - Moss Lab/20251007/sid260/e2';
 
-useRoisFromOtherExp = 0;
-useRoisFromPython = 1;
-matDirWithMaskInfo = "/Users/priscilla/Documents/Local - Moss Lab/mask.mat";
+useRoisFromOtherExp = 1;
+useRoisFromPython = 0;
+matDirWithMaskInfo = "/Users/priscilla/Documents/Local - Moss Lab/20251007/sid260/e1/processed/matlab/2026-04-15/a20251007_sid260_e1_00001_mcor_to_a20251007_sid260_e1_00090_mcor_2026-04-15_masksFromGUI.mat";
 should_I_plot_dFF = 0;
 visibility = 'off';
 
@@ -44,9 +44,12 @@ else
 end
 
 % CLOSE GUI BEFORE CONTINUING
+close segmentationGUI
 
 
 %% Save workspace
+
+close all
 
 % Create naming variables
 todayStr = string(datetime('Today'), 'yyyy-MM-dd');
@@ -88,23 +91,23 @@ imgToProject = imread(filepath);
 avgProjection = mean(imgToProject, 3);
 
 
-% %% Show ROIS
-% 
-% figName = strcat(firstAcqName(2:end), '_to_', lastAcqName(2:end), '_rois');
-% fig = figure('Name',figName);
-% 
-% if convertFrom32bit
-%     avgProjection = cast(avgProjection,'uint16');
-%     imshow(imadjust(avgProjection))
-% else
-%     imshow(imadjust(avgProjection,[0.5 0.65])) 
-% end
-% hold on;
-% finalMaskRGB = label2rgb(finalMask, 'jet', 'k', 'shuffle'); 
-% hOverlay = imshow(finalMaskRGB);
-% alphaMap = double(finalMask > 0) * 0.5; 
-% set(hOverlay, 'AlphaData', alphaMap);
-% hold off;
+%% Show ROIS
+
+figName = strcat(firstAcqName(2:end), '_to_', lastAcqName(2:end), '_rois');
+fig = figure('Name',figName);
+
+if convertFrom32bit
+    avgProjection = cast(avgProjection,'uint16');
+    imshow(imadjust(avgProjection))
+else
+    imshow(imadjust(avgProjection,[0.5 0.65])) 
+end
+hold on;
+finalMaskRGB = label2rgb(finalMask, 'jet', 'k', 'shuffle'); 
+hOverlay = imshow(finalMaskRGB);
+alphaMap = double(finalMask > 0) * 0.5; 
+set(hOverlay, 'AlphaData', alphaMap);
+hold off;
 
 
 %% Get fluorescence in fiji ROIs for each file/acquisition
@@ -203,7 +206,7 @@ disp('I saved the mat file')
 
 %% Show ROIS
 
-figName = strcat(firstAcqName(2:end), '_to_', lastAcqName(2:end), '_rois');
+figName = strcat(firstAcqName(1:end), '_to_', lastAcqName(1:end), '_rois');
 fig = figure('Name',figName);
 
 if convertFrom32bit
@@ -218,6 +221,14 @@ hOverlay = imshow(finalMaskRGB);
 alphaMap = double(finalMask > 0) * 0.5; 
 set(hOverlay, 'AlphaData', alphaMap);
 hold off;
+
+FigName = fig.Name;
+set(0, 'CurrentFigure', fig);
+% forces matlab to save fig as a vector
+fig.Renderer = 'painters';  
+% actually saves a vector file
+saveas(fig,fullfile(saveFolder, [FigName '.svg']));
+close(fig);
 
 
 %% Prep for z plots
@@ -467,6 +478,17 @@ for iROI = 1:nROIs
     t.TileSpacing = 'compact';
     t.Padding = 'compact';
     disp(strcat("plot roi ", num2str(iROI), " done"))
+
+    if saveFigs
+        FigName = fig.Name;
+        set(0, 'CurrentFigure', fig);
+        % forces matlab to save fig as a vector
+        fig.Renderer = 'painters';  
+        % actually saves a vector file
+        saveas(fig,fullfile(saveFolder, [FigName '.svg']));
+        close(fig);
+    end
+
 end
 
 
@@ -479,27 +501,25 @@ end
 
 %% Save figs
 
-if saveFigs
-    FigList = findobj(allchild(0), 'flat', 'Type', 'figure');
-    
-    % save all open figs
-    for iFig = 1:length(FigList)
-      FigHandle = FigList(iFig);
-      FigName = FigList(iFig).Name;
-      set(0, 'CurrentFigure', FigHandle);
-      % forces matlab to save fig as a vector
-      FigHandle.Renderer = 'painters';  
-      % actually saves a vector file
-      saveas(FigHandle,fullfile(saveFolder, [FigName '.svg']));
-    end 
-    disp('saved all figs')
-    close all
-end
+% if saveFigs
+%     FigList = findobj(allchild(0), 'flat', 'Type', 'figure');
+% 
+%     % save all open figs
+%     for iFig = 1:length(FigList)
+%       FigHandle = FigList(iFig);
+%       FigName = FigList(iFig).Name;
+%       set(0, 'CurrentFigure', FigHandle);
+%       % forces matlab to save fig as a vector
+%       FigHandle.Renderer = 'painters';  
+%       % actually saves a vector file
+%       saveas(FigHandle,fullfile(saveFolder, [FigName '.svg']));
+%     end 
+%     disp('saved all figs')
+%     close all
+% end
 
 
 %% Save workspace
 
-matFileName = strcat(firstAcquisitionName, '_to_', ...
-    lastAcquisitionName, '_', todayStr, '_masksFromGUI');
 save(fullfile(saveFolder, matFileName));
 disp('I saved the mat file');
