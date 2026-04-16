@@ -11,6 +11,7 @@ TODO:
     3) Include the whole movie instead of just a frame
     4) Improve the strip bounds calculation
     5) Add load state after closing
+    6) Add border exclusion zone
 
 DEPENDS:
     - image_dF_* until "Iterate over Data" section.
@@ -64,6 +65,7 @@ segmentationGUI.UserData.currentTool = "Pick Strip Center";
 segmentationGUI.UserData.excludedCenter = ...
     round(size(zScoreEnvelope, 1) / 2);
 segmentationGUI.UserData.excludedHeight = 50;
+segmentationGUI.UserData.minArea = 0;
 segmentationGUI.UserData.excludedROIs = [];
 
 % Compute first mask
@@ -72,7 +74,7 @@ updateMask(segmentationGUI);
 
 % Create grid to organize widgets and plots
 gl = uigridlayout(segmentationGUI, [3, 1]);
-gl.RowHeight = {60, '1x', 60};
+gl.RowHeight = {60, '1x', 120};
 
 glButtons = uigridlayout(gl, [1, 3]);
 glButtons.Layout.Row = 1;
@@ -140,7 +142,7 @@ segmentationGUI.UserData.excluded = ...
 hold(segmentationGUI.UserData.axis, 'on');
 
 % Add sliders
-glSliders = uigridlayout(gl, [1, 6]);
+glSliders = uigridlayout(gl, [2, 6]);
 glSliders.Layout.Row = 3;
 glSliders.Layout.Column = 1;
 glSliders.ColumnWidth = {'fit', '1x', 'fit', '1x', 'fit', '1x'};
@@ -191,15 +193,34 @@ excludedSlider.MajorTicks = 0:100:400;
 excludedSlider.MinorTicks = 0:50:400;
 
 excludedSlider.ValueChangedFcn = ...
-    @(src, event) updateExcludedRegion(event.Value, segmentationGUI);
+    @(src, event) updateExcludedRegion( segmentationGUI ...
+                                      , height=event.Value ...
+                                      );
+
+minAreaLabel = uilabel(glSliders);
+minAreaLabel.Text = 'Min Area';
+minAreaLabel.Layout.Row = 2;
+minAreaLabel.Layout.Column = 1;
+
+minAreaSlider = uislider(glSliders);
+minAreaSlider.Layout.Row = 2;
+minAreaSlider.Layout.Column = 2;
+minAreaSlider.Limits = [0 50];
+minAreaSlider.Value = segmentationGUI.UserData.minArea;
+minAreaSlider.MajorTicks = 0:10:50;
+minAreaSlider.MinorTicks = 0:2.5:50;
+
+minAreaSlider.ValueChangedFcn = ...
+    @(src, event) updateExcludedRegion( segmentationGUI ...
+                                      , minArea = event.Value ...
+                                      );
 
 % Add click callback
 event.listener( segmentationGUI, 'WindowMousePress' ...
               , @(src, event) clickCallback(src, event, segmentationGUI));
 
 % Add mask to plot
-updateExcludedRegion( segmentationGUI.UserData.excludedHeight ...
-                    , segmentationGUI);
+updateExcludedRegion(segmentationGUI);
 
 segmentationGUI.UserData.overlayHandle = ...
     imshow( segmentationGUI.UserData.maskAfterExclusion ...
@@ -239,7 +260,7 @@ function clickCallback(~, event, fig)
 
         elseif strcmp(fig.UserData.currentTool, "Pick Strip Center")
             fig.UserData.excludedCenter = pos(2);
-            updateExcludedRegion(fig.UserData.excludedHeight, fig);
+            updateExcludedRegion(fig);
 
         elseif strcmp(fig.UserData.currentTool, "Add ROI")
             fprintf("Not implemented yet!\n");
@@ -256,7 +277,7 @@ function updateThreshold(event, fig)
 
     updatePlot(fig);
     updateMask(fig);
-    updateExcludedRegion(fig.UserData.excludedHeight, fig);
+    updateExcludedRegion(fig);
     redraw(fig);
 end
 
@@ -265,11 +286,20 @@ function updateBlur(event, fig)
 
     updatePlot(fig);
     updateMask(fig);
-    updateExcludedRegion(fig.UserData.excludedHeight, fig);
+    updateExcludedRegion(fig);
     redraw(fig);
 end
 
-function updateExcludedRegion(height, fig)
+function updateExcludedRegion(fig, options)
+    arguments
+        fig
+        options.height = fig.UserData.excludedHeight
+        options.minArea = fig.UserData.minArea
+    end
+
+    height = options.height;
+    minArea = options.minArea;
+
     % Compute rectangle bounds
     xmin = 1;
     ymin = fig.UserData.excludedCenter - round(height / 2);
@@ -279,6 +309,7 @@ function updateExcludedRegion(height, fig)
 
     % Update stored values
     fig.UserData.excludedHeight = height;
+    fig.UserData.minArea = minArea;
 
     % ymin and height need to be such that the excluded region
     % is within the plot bounds.
@@ -288,9 +319,16 @@ function updateExcludedRegion(height, fig)
     % Update rectangle on the plot
     fig.UserData.excluded.Position = [ xmin ymin width height ];
 
-    % Remove ROIs
+    % Remove ROIs touching the strip
     fig.UserData.excludedROIs = unique( ...
         fig.UserData.mask(ymin : ymin + height, :));
+
+    % Exclude ROI that have area < minArea
+    for iROI = 1:fig.UserData.nROIs
+        if sum(fig.UserData.mask == iROI) < minArea
+            fig.UserData.excludedROIs(end + 1) = iROI;
+        end
+    end
 
     fig.UserData.maskAfterExclusion = fig.UserData.mask;
     fig.UserData.maskAfterExclusion( ...
