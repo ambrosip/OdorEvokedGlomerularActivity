@@ -54,7 +54,7 @@ zScoreEnvelope = zScoreEnvelope.correlation_image;
 
 % Create a UI Figure
 segmentationGUI = uifigure();
-segmentationGUI.Position = [800 150 700 800];
+segmentationGUI.Position = [800 150 1000 800];
 
 % Create UserData struct with default values
 segmentationGUI.UserData.original = zScoreEnvelope;
@@ -72,6 +72,10 @@ segmentationGUI.UserData.excludedCenter = ...
     round(size(zScoreEnvelope, 1) / 2);
 segmentationGUI.UserData.excludedHeight = 50;
 segmentationGUI.UserData.minArea = 0;
+segmentationGUI.UserData.leftExcluded = 0;
+segmentationGUI.UserData.rightExcluded = 0;
+segmentationGUI.UserData.topExcluded = 0;
+segmentationGUI.UserData.bottomExcluded = 0;
 segmentationGUI.UserData.excludedROIs = [];
 
 % Compute first mask
@@ -148,13 +152,17 @@ segmentationGUI.UserData.excluded = ...
 hold(segmentationGUI.UserData.axis, 'on');
 
 % Add sliders
-glSliders = uigridlayout(gl, [2, 6]);
+glSliders = uigridlayout(gl, [2, 8]);
 glSliders.Layout.Row = 3;
 glSliders.Layout.Column = 1;
-glSliders.ColumnWidth = {'fit', '1x', 'fit', '1x', 'fit', '1x'};
+glSliders.ColumnWidth = { 'fit', '1x' ...
+                        , 'fit', '1x' ...
+                        , 'fit', '1x' ...
+                        , 'fit', '1x'
+                        };
 
 thresholdLabel = uilabel(glSliders);
-thresholdLabel.Text = 'Min Z-score';
+thresholdLabel.Text = {'Min', 'Z-score'};
 thresholdLabel.Layout.Row = 1;
 thresholdLabel.Layout.Column = 1;
 
@@ -204,13 +212,13 @@ excludedSlider.ValueChangedFcn = ...
                                       );
 
 minAreaLabel = uilabel(glSliders);
-minAreaLabel.Text = 'Min Area';
-minAreaLabel.Layout.Row = 2;
-minAreaLabel.Layout.Column = 1;
+minAreaLabel.Text = {'Min', 'Area'};
+minAreaLabel.Layout.Row = 1;
+minAreaLabel.Layout.Column = 7;
 
 minAreaSlider = uislider(glSliders);
-minAreaSlider.Layout.Row = 2;
-minAreaSlider.Layout.Column = 2;
+minAreaSlider.Layout.Row = 1;
+minAreaSlider.Layout.Column = 8;
 minAreaSlider.Limits = [0 50];
 minAreaSlider.Value = segmentationGUI.UserData.minArea;
 minAreaSlider.MajorTicks = 0:10:50;
@@ -219,6 +227,78 @@ minAreaSlider.MinorTicks = 0:2.5:50;
 minAreaSlider.ValueChangedFcn = ...
     @(src, event) updateExcludedRegion( segmentationGUI ...
                                       , minArea = event.Value ...
+                                      );
+
+leftExclusionLabel = uilabel(glSliders);
+leftExclusionLabel.Text = {'Excluded', 'Left'};
+leftExclusionLabel.Layout.Row = 2;
+leftExclusionLabel.Layout.Column = 1;
+
+leftExclusionSlider = uislider(glSliders);
+leftExclusionSlider.Layout.Row = 2;
+leftExclusionSlider.Layout.Column = 2;
+leftExclusionSlider.Limits = [0 100];
+leftExclusionSlider.Value = segmentationGUI.UserData.leftExcluded;
+leftExclusionSlider.MajorTicks = 0:20:100;
+leftExclusionSlider.MinorTicks = 0:5:100;
+
+leftExclusionSlider.ValueChangedFcn = ...
+    @(src, event) updateExcludedRegion( segmentationGUI ...
+                                      , leftExcluded = event.Value ...
+                                      );
+
+rightExclusionLabel = uilabel(glSliders);
+rightExclusionLabel.Text = {'Excluded', 'Right'};
+rightExclusionLabel.Layout.Row = 2;
+rightExclusionLabel.Layout.Column = 3;
+
+rightExclusionSlider = uislider(glSliders);
+rightExclusionSlider.Layout.Row = 2;
+rightExclusionSlider.Layout.Column = 4;
+rightExclusionSlider.Limits = [0 100];
+rightExclusionSlider.Value = segmentationGUI.UserData.rightExcluded;
+rightExclusionSlider.MajorTicks = 0:20:100;
+rightExclusionSlider.MinorTicks = 0:5:100;
+
+rightExclusionSlider.ValueChangedFcn = ...
+    @(src, event) updateExcludedRegion( segmentationGUI ...
+                                      , rightExcluded = event.Value ...
+                                      );
+
+topExclusionLabel = uilabel(glSliders);
+topExclusionLabel.Text = {'Excluded', 'Top'};
+topExclusionLabel.Layout.Row = 2;
+topExclusionLabel.Layout.Column = 5;
+
+topExclusionSlider = uislider(glSliders);
+topExclusionSlider.Layout.Row = 2;
+topExclusionSlider.Layout.Column = 6;
+topExclusionSlider.Limits = [0 100];
+topExclusionSlider.Value = segmentationGUI.UserData.topExcluded;
+topExclusionSlider.MajorTicks = 0:20:100;
+topExclusionSlider.MinorTicks = 0:5:100;
+
+topExclusionSlider.ValueChangedFcn = ...
+    @(src, event) updateExcludedRegion( segmentationGUI ...
+                                      , topExcluded = event.Value ...
+                                      );
+
+bottomExclusionLabel = uilabel(glSliders);
+bottomExclusionLabel.Text = {'Excluded', 'Bottom'};
+bottomExclusionLabel.Layout.Row = 2;
+bottomExclusionLabel.Layout.Column = 7;
+
+bottomExclusionSlider = uislider(glSliders);
+bottomExclusionSlider.Layout.Row = 2;
+bottomExclusionSlider.Layout.Column = 8;
+bottomExclusionSlider.Limits = [0 100];
+bottomExclusionSlider.Value = segmentationGUI.UserData.bottomExcluded;
+bottomExclusionSlider.MajorTicks = 0:20:100;
+bottomExclusionSlider.MinorTicks = 0:5:100;
+
+bottomExclusionSlider.ValueChangedFcn = ...
+    @(src, event) updateExcludedRegion( segmentationGUI ...
+                                      , bottomExcluded = event.Value ...
                                       );
 
 % Add click callback
@@ -301,10 +381,21 @@ function updateExcludedRegion(fig, options)
         fig
         options.height = fig.UserData.excludedHeight
         options.minArea = fig.UserData.minArea
+        options.leftExcluded = fig.UserData.leftExcluded
+        options.rightExcluded = fig.UserData.rightExcluded
+        options.topExcluded = fig.UserData.topExcluded
+        options.bottomExcluded = fig.UserData.bottomExcluded
     end
 
     height = options.height;
     minArea = options.minArea;
+    
+    [imageHeight, imageWidth] = size(fig.UserData.mask);
+
+    leftExcluded = max(1, round(options.leftExcluded));
+    rightExcluded = imageWidth - round(options.rightExcluded);
+    topExcluded = max(1, round(options.topExcluded));
+    bottomExcluded = imageHeight - round(options.bottomExcluded);
 
     % Compute rectangle bounds
     xmin = 1;
@@ -316,6 +407,10 @@ function updateExcludedRegion(fig, options)
     % Update stored values
     fig.UserData.excludedHeight = height;
     fig.UserData.minArea = minArea;
+    fig.UserData.leftExcluded = options.leftExcluded;
+    fig.UserData.rightExcluded = options.rightExcluded;
+    fig.UserData.topExcluded = options.topExcluded;
+    fig.UserData.bottomExcluded = options.bottomExcluded;
 
     % ymin and height need to be such that the excluded region
     % is within the plot bounds.
@@ -326,15 +421,21 @@ function updateExcludedRegion(fig, options)
     fig.UserData.excluded.Position = [ xmin ymin width height ];
 
     % Remove ROIs touching the strip
-    fig.UserData.excludedROIs = unique( ...
-        fig.UserData.mask(ymin : ymin + height, :));
+    U = unique(fig.UserData.mask(ymin : ymin + height, :));
+
+    U = union(U, fig.UserData.mask(1:topExcluded, :));
+    U = union(U, fig.UserData.mask(bottomExcluded:end, :));
+    U = union(U, fig.UserData.mask(:, 1:leftExcluded));
+    U = union(U, fig.UserData.mask(:, rightExcluded:end));
 
     % Exclude ROI that have area < minArea
     for iROI = 1:fig.UserData.nROIs
         if sum(fig.UserData.mask == iROI) < minArea
-            fig.UserData.excludedROIs(end + 1) = iROI;
+            U(end + 1) = iROI;
         end
     end
+
+    fig.UserData.excludedROIs = U;
 
     fig.UserData.maskAfterExclusion = fig.UserData.mask;
     fig.UserData.maskAfterExclusion( ...
