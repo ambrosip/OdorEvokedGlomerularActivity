@@ -42,7 +42,8 @@ DEPENDS:
 
 %% Compute Z-score envelope
 
-zScoreEnvelope = load('/Users/priscilla/Documents/Local - Moss Lab/20251007_sid260_e2_correlation_array.mat','correlation_image');
+moviesMatFile = "M:\ImagingData\20260309\m357\processed\matlab\movies\20260309_m357_e1_correlation_array.mat";
+zScoreEnvelope = load(moviesMatFile,'correlation_image');
 zScoreEnvelope = zScoreEnvelope.correlation_image;
 
 %% Create GUI
