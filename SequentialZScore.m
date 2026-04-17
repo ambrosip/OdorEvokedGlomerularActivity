@@ -315,7 +315,7 @@ nROIs = expData(1).nROIs;
 if plotRoiSubset == 1
     roiRange = roiSubset;
 else
-    roiRange = 1:nROI;
+    roiRange = 1:nROIs;
 end
 
 for iROI = roiRange

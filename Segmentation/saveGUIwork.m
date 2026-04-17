@@ -1,7 +1,7 @@
 %% USER INPUT
 % REMEMBER TO CLOSE GUI BEFORE ADVANCING PAST SAVE MASK SESSION
 
-expDir = 'M:\ImagingData\20251002\M174\e1';
+expDir = '/Volumes/MossLab/ImagingData/20260311/m357';
 
 useRoisFromOtherExp = 0;
 useRoisFromPython = 0;
@@ -49,9 +49,19 @@ else
 end
 
 
-%% Save workspace
+%% Update dirs
 
-close all
+if exist('patchwarp','var')
+    if patchwarp == 1
+        getFileDirs_patchwarp
+    else
+        getFileDirs
+    end
+else
+    getFileDirs
+end
+
+getImgDirs
 
 % Create naming variables
 todayStr = string(datetime('Today'), 'yyyy-MM-dd');
@@ -66,25 +76,19 @@ if not(isfolder(saveFolder))
     mkdir(saveFolder);
 end
 
+% store mat file name
 matFileName = strcat(firstAcquisitionName, '_to_', ...
     lastAcquisitionName, '_', todayStr, '_masksFromGUI');
+
+
+%% Save workspace so far
+
+close all
 save(fullfile(saveFolder, matFileName));
 disp('I saved the mat file');
 
 
 %% Make z-proj of 1st mcor file for ROI labeling
-
-if exist('patchwarp','var')
-    if patchwarp == 1
-        getFileDirs_patchwarp
-    else
-        getFileDirs
-    end
-else
-    getFileDirs
-end
-
-getImgDirs
 
 filename = imgsToAnalyzeDirs(1).name;
 fileDir = imgsToAnalyzeDirs(1).folder;
