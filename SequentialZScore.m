@@ -19,9 +19,11 @@ DEPENDS on:
 % USE DOUBLE QUOTES, NOT SINGLE QUOTES
 % PUT ",..." BETWEEN EXP
 expFolders = [ ...
-    "/Users/priscilla/Documents/Local - Moss Lab/20251007/sid260/e1",...
-    "/Users/priscilla/Documents/Local - Moss Lab/20251007/sid260/e2"...
+    "M:\ImagingData\20251002\M174\e1"...
     ];
+
+plotRoiSubset = 1;
+roiRange = [1:20];
 
 % File extension for the plot images
 fileExtension = ".svg";
@@ -310,7 +312,14 @@ plotTimeRange = [0 (endTime - startTime)];
 % ASSUMPTION: All experiments have the same number of ROIs
 nROIs = expData(1).nROIs;
 
-for iROI = 1:nROIs
+if plotRoiSubset == 1
+    roiRange = roiSubset;
+else
+    roiRange = 1:nROI;
+end
+
+for iROI = roiRange
+% for iROI = 1:nROIs
     % Name figure
     figName = strcat(expData(1).name, ...
         '_to_', expData(end).name, ...

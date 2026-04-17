@@ -1,13 +1,16 @@
 %% USER INPUT
 % REMEMBER TO CLOSE GUI BEFORE ADVANCING PAST SAVE MASK SESSION
 
-expDir = '/Users/priscilla/Documents/Local - Moss Lab/20251007/sid260/e2';
+expDir = 'M:\ImagingData\20251002\M174\e1';
 
-useRoisFromOtherExp = 1;
+useRoisFromOtherExp = 0;
 useRoisFromPython = 0;
 matDirWithMaskInfo = "/Users/priscilla/Documents/Local - Moss Lab/20251007/sid260/e1/processed/matlab/2026-04-15/a20251007_sid260_e1_00001_mcor_to_a20251007_sid260_e1_00090_mcor_2026-04-15_masksFromGUI.mat";
 should_I_plot_dFF = 0;
 visibility = 'off';
+
+plotRoiSubset = 1;
+roiSubset = [1:20];
 
 % if using mcor files from odyn (caiman python)
 convertFrom32bit = true;
@@ -23,7 +26,7 @@ manual_y_limits = 1;
 ymax = 25;
 ymin = -5;
 
-manual_x_limits = 0;
+manual_x_limits = 1;
 xmin = -2;
 xmax = 4;
 
@@ -41,10 +44,9 @@ else
     [finalMask, nROIs] = bwlabel(segmentationGUI.UserData.maskAfterExclusion > 0, 4);
     labelRGB = label2rgb(finalMask, 'jet', 'k', 'shuffle'); 
     segmentationGUI_UserData = segmentationGUI.UserData;
+    % CLOSE GUI BEFORE CONTINUING
+    close(segmentationGUI)
 end
-
-% CLOSE GUI BEFORE CONTINUING
-close segmentationGUI
 
 
 %% Save workspace
@@ -93,7 +95,7 @@ avgProjection = mean(imgToProject, 3);
 
 %% Show ROIS
 
-figName = strcat(firstAcqName(2:end), '_to_', lastAcqName(2:end), '_rois');
+figName = strcat(firstAcqName(1:end), '_to_', lastAcqName(1:end), '_rois');
 fig = figure('Name',figName);
 
 if convertFrom32bit
@@ -108,6 +110,14 @@ hOverlay = imshow(finalMaskRGB);
 alphaMap = double(finalMask > 0) * 0.5; 
 set(hOverlay, 'AlphaData', alphaMap);
 hold off;
+
+FigName = fig.Name;
+set(0, 'CurrentFigure', fig);
+% forces matlab to save fig as a vector
+fig.Renderer = 'painters';  
+% actually saves a vector file
+saveas(fig,fullfile(saveFolder, [FigName '.pdf']));
+close(fig);
 
 
 %% Get fluorescence in fiji ROIs for each file/acquisition
@@ -202,33 +212,6 @@ disp("Calculated Z-scores of dF/F")
 close all
 save(fullfile(saveFolder, matFileName));
 disp('I saved the mat file')
-
-
-%% Show ROIS
-
-figName = strcat(firstAcqName(1:end), '_to_', lastAcqName(1:end), '_rois');
-fig = figure('Name',figName);
-
-if convertFrom32bit
-    avgProjection = cast(avgProjection,'uint16');
-    imshow(imadjust(avgProjection))
-else
-    imshow(imadjust(avgProjection,[0.5 0.65])) 
-end
-hold on;
-finalMaskRGB = label2rgb(finalMask, 'jet', 'k', 'shuffle'); 
-hOverlay = imshow(finalMaskRGB);
-alphaMap = double(finalMask > 0) * 0.5; 
-set(hOverlay, 'AlphaData', alphaMap);
-hold off;
-
-FigName = fig.Name;
-set(0, 'CurrentFigure', fig);
-% forces matlab to save fig as a vector
-fig.Renderer = 'painters';  
-% actually saves a vector file
-saveas(fig,fullfile(saveFolder, [FigName '.svg']));
-close(fig);
 
 
 %% Prep for z plots
@@ -356,7 +339,14 @@ columns = maxOdorNumber + extraColumns;
 % xsx is the palindromic version of xs (needed for the fill plot)
 xsx = [xs flip(xs)];
 
-for iROI = 1:nROIs
+if plotRoiSubset == 1
+    roiRange = roiSubset;
+else
+    roiRange = 1:nROI;
+end
+
+for iROI = roiRange
+% for iROI = 1:nROIs
     % Create one figure per ROI
     figName = strcat( ...
         firstAcquisitionName, '_to_', lastAcquisitionName, ...
@@ -521,5 +511,9 @@ end
 
 %% Save workspace
 
+close all
 save(fullfile(saveFolder, matFileName));
 disp('I saved the mat file');
+
+
+
