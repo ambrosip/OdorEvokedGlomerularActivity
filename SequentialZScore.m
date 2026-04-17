@@ -19,11 +19,12 @@ DEPENDS on:
 % USE DOUBLE QUOTES, NOT SINGLE QUOTES
 % PUT ",..." BETWEEN EXP
 expFolders = [ ...
-    "M:\ImagingData\20251002\M174\e1"...
+    "M:\ImagingData\20260306\m357\e1",...
+    "M:\ImagingData\20260306\m357\e2"...
     ];
 
 plotRoiSubset = 1;
-roiRange = [1:20];
+roiSubset = [1:20];
 
 % File extension for the plot images
 fileExtension = ".svg";
@@ -36,7 +37,7 @@ zScoreRange = [-5 10];
 % Save figures in saveDir or not?
 % If false, it will save figure in:
 %   EXPFOLDER/processed/matlab/SCRIPT_RUN_DATE
-useSaveDir = false;
+useSaveDir = true;
 
 
 %% Load relevant .mat files
@@ -48,7 +49,7 @@ nFolders = length(expFolders);
 
 for iFolder = 1:nFolders
     % ALERT: loadData is defined at the end of the file.
-    [expData(iFolder), saveDir] = loadData(expFolders(iFolder), iFolder);
+    [expData(iFolder), saveDirFML] = loadData(expFolders(iFolder), iFolder);
 end
 
 
@@ -84,8 +85,8 @@ end
 % Just some padding
 fprintf('\n');
 
-plotFigures(expData, fileExtension, 'dFF', dFFRange, saveFolder);
-plotFigures(expData, fileExtension, 'zScore', zScoreRange, saveFolder);
+% plotFigures(expData, fileExtension, 'dFF', plotRoiSubset, roiSubset, dFFRange, saveFolder);
+plotFigures(expData, fileExtension, 'zScore', plotRoiSubset, roiSubset, zScoreRange, saveFolder);
 
 
 %%  Auxiliary Functions
@@ -252,8 +253,9 @@ end
 
 end
 
-function plotFigures(expData, fileExtension, ...
-                                  plotType, yRange, saveFolder)
+function plotFigures(expData, fileExtension, plotType, ...
+                                  plotRoiSubset, roiSubset,...
+                                  yRange, saveFolder)
 % PLOTFIGURES Plots and saves dF/F or z-scores to the saveFolder
 % (default is EXPFOLDER/processed/matlab/DATE).
 %
@@ -265,6 +267,8 @@ arguments
     expData
     fileExtension {mustBeTextScalar}
     plotType (1,1) string {mustBeMember(plotType, ["dFF", "zScore"])}
+    plotRoiSubset
+    roiSubset
     yRange (2,1) double = [Inf -Inf]
     saveFolder {mustBeTextScalar} = ""
 end
