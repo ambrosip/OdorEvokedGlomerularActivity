@@ -10,10 +10,10 @@ function scatterNicePlot(namePrefix,figSubtitle,dataName,dataType,label,ymin,yma
 % var1: baselineAvgsToCompare(:,1)
 % var2: baselineAvgsToCompare(:,2)
 
-figure('Name',strcat(namePrefix, "_", dataType, "_", figSubtitle))
+figure('Name',strcat(namePrefix, "_", dataType, "_", figSubtitle, "_niceplot"))
 
 hold on;
-scatter(var1,var2,100,'o','MarkerEdgeColor','k','MarkerEdgeAlpha',0.5,'MarkerFaceColor', 'k', 'MarkerFaceAlpha', 0.5)
+scatter(var1,var2,50,'o','MarkerEdgeColor','k','MarkerEdgeAlpha',0.5,'MarkerFaceColor', 'k', 'MarkerFaceAlpha', 0.5)
 plot([ymin,ymax],[ymin,ymax], '--k')
 axis([ymin,ymax,ymin,ymax])
 title(dataName,figSubtitle,'Interpreter','none')
@@ -24,9 +24,9 @@ yticks([ymin,0 ymax]);
 set(gca,'TickDir','in');
 set(gca,'FontName','Arial');
 set(gca,'TickLength', [0.025, 0.025]);
-set(findall(gcf,'-property','FontSize'),'FontSize',20)
-ylabel(strcat(label.(dataType), " Post-injection"),'FontSize',25)
-xlabel(strcat(label.(dataType), " Pre-injection"),'FontSize',25)
+set(findall(gcf,'-property','FontSize'),'FontSize',15)
+ylabel(strcat(label.(dataType), " Post-injection"),'FontSize',20)
+xlabel(strcat(label.(dataType), " Pre-injection"),'FontSize',20)
 hold off;
 
 end

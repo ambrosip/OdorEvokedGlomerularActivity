@@ -10,14 +10,17 @@ DEPENDS:
 
 %}
 
+close all
+clear all
+
 %% USER INPUT
 
 % Save folder
-saveFolder = '.';
+saveFolder = 'M:\ImagingData\20251002\M174\e1\processed\matlab\2026-04-16';
 
 % Odor numbers (order doesn't matter)
-firstOdorId = 3;
-secondOdorId = 20;
+firstOdorId = 1;
+secondOdorId = 2;
 
 % hit, miss, false, or na?
 outcome = "na";
@@ -26,7 +29,7 @@ outcome = "na";
 zScoreMax = 5;
 
 % Path to .mat files (could be more than one)
-pathMatFiles = ["/Users/vinicius/TempData/20260324/m357/e1/processed/matlab/2026-04-11/20260324_m357_e1_00001_corrected_w_ted_warped_preProcessing.mat"];
+pathMatFiles = ["M:\ImagingData\20251002\M174\e1\processed\matlab\2026-04-16\20251002_sid174_e1_to_20251002_sid174_e1_sequentialZScore.mat"];
 
 % Program numbers
 programNumbers = [1, 2];
@@ -63,7 +66,7 @@ iRow = 1;
 
 % Plot ranges
 bidirectionalRange = [-zScoreMax zScoreMax];
-onlyPositiveRange = [0 zScoreMax];
+onlyPositiveRange = [0 2*zScoreMax];
 
 % One new row for each combination of experiment and program
 for path = pathMatFiles
@@ -142,11 +145,13 @@ for path = pathMatFiles
     end
 end
 
-figName = strcat(figName, '_OdorDiff');
+figName = strcat(figName, "_", num2str(firstOdorId), '_OdorDiff');
 fig.Name = figName;
 
 tl.TileSpacing = "tight";
 tl.Padding = "compact";
+
+set(gcf, 'Position', [2000 100 900 700])    % x y width height  
 
 
 %% Save figure
@@ -154,3 +159,4 @@ tl.Padding = "compact";
 figPath = fullfile(saveFolder, sprintf("%s.svg", figName));
 fig.Theme = 'light';
 saveas(fig, figPath);
+close all
