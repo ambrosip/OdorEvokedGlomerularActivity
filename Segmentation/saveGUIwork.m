@@ -289,20 +289,27 @@ for programNum = unique(db_trials.programNum)'
             % Preallocate the matrix by adding a 0 to the end.
             % It might have been easier to take the mean first, to not
             % store a big matrix, but this is easier to understand
-            clear allFrames_allROIs_allAcq;
-            allFrames_allROIs_allAcq(nFrames, nROIs, nAcq) = 0;
+            clear allFrames_allROIs_allAcq_z;
+            clear allFrames_allROIs_allAcq_dFF;
+            allFrames_allROIs_allAcq_z(nFrames, nROIs, nAcq) = 0;
+            allFrames_allROIs_allAcq_dFF(nFrames, nROIs, nAcq) = 0;
 
-            % Concatenate all zdFF into a nFrames x nROIs x nAcq matrix
+            % Concatenate all zdFF and dFF into matrices of the form nFrames x nROIs x nAcq 
             for iAcquisition = 1:length(fieldnamesToKeep)
                 fieldname = fieldnamesToKeep{iAcquisition};
-                allFrames_allROIs_thisAcq = fileZdFF.(fieldname);
-                allFrames_allROIs_allAcq(:, :, iAcquisition) = ...
-                    allFrames_allROIs_thisAcq;
+                allFrames_allROIs_thisAcq_z = fileZdFF.(fieldname);
+                allFrames_allROIs_allAcq_z(:, :, iAcquisition) = ...
+                    allFrames_allROIs_thisAcq_z;
+                allFrames_allROIs_thisAcq_dFF = fileZdFF.(fieldname);
+                allFrames_allROIs_allAcq_dFF(:, :, iAcquisition) = ...
+                    allFrames_allROIs_thisAcq_dFF;
             end
 
             % Average over acquisitions (3rd dimension)
-            allFrames_allROIs_meanAcq = ...
-                mean(allFrames_allROIs_allAcq, 3, 'omitnan');
+            allFrames_allROIs_meanAcq_z = ...
+                mean(allFrames_allROIs_allAcq_z, 3, 'omitnan');
+            allFrames_allROIs_meanAcq_dFF = ...
+                mean(allFrames_allROIs_allAcq_dFF, 3, 'omitnan');
             
             % Fix field names for the structure
             programFieldName = strcat("program_", num2str(programNum));
@@ -316,11 +323,15 @@ for programNum = unique(db_trials.programNum)'
 
             % Add new matrix to the structure
             s_mean_zscore.(programFieldName).(odorFieldName).(outcomeFieldName) = ...
-                allFrames_allROIs_meanAcq;
+                allFrames_allROIs_meanAcq_z;
+            s_mean_dFF.(programFieldName).(odorFieldName).(outcomeFieldName) = ...
+                allFrames_allROIs_meanAcq_dFF;
 
             % Also, storing the matrix before averaging
             s_zscore.(programFieldName).(odorFieldName).(outcomeFieldName) = ...
-                allFrames_allROIs_allAcq;
+                allFrames_allROIs_allAcq_z;
+            s_dFF.(programFieldName).(odorFieldName).(outcomeFieldName) = ...
+                allFrames_allROIs_allAcq_dFF;
 
             % TO DO: s_mean_zscore is redundant, remove it by changing
             % ------ the code that comes later (adding the relevant means)
@@ -404,9 +415,9 @@ for iROI = roiRange
                 end
 
                 % Gets data for this ROI and all acquisitions
-                allFrames_allROIs_allAcq = odorStruct.(outcomeFieldName);
+                allFrames_allROIs_allAcq_z = odorStruct.(outcomeFieldName);     %%%%%%%%%%%%%%%
                 allFrames_thisROI_allAcq = ...
-                    allFrames_allROIs_allAcq(:,iROI,:);
+                    allFrames_allROIs_allAcq_z(:,iROI,:);
 
                 % Get the mean and stderr (SEM) along acquisitions
                 allFrames_thisROI_meanAcq = ...

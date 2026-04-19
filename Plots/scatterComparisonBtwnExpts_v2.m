@@ -1,5 +1,7 @@
 %% USER INPUT
 
+% LOAD sequential mat file
+
 ylimit_min.dFF = -0.1;
 ylimit_max.dFF = 0.1;
 ylimit_min.zScore = -5;
@@ -7,8 +9,33 @@ ylimit_max.zScore = 5;
 label.dFF = "dF/F";
 label.zScore = "Z-score";
 
-% ALERT: hard coded comparison between exp 1 and exp 2 or program 1 and
-% program 2
+olfactory_task = "passive_odor_presentations";
+
+% colorblind-safe colors (source:
+% https://www.nature.com/articles/nmeth.1618)
+black_color = [0 0 0]/255;
+orange_color = [230 159 0]/255;
+sky_blue_color = [86 180 233]/255;
+bluish_green_color = [0 158 115]/255;
+yellow_color = [240 228 66]/255;
+blue_color = [0 114 178]/255;
+vermillion_color = [213 94 0]/255;
+reddish_purple_color = [204 121 167]/255;
+
+% odor color-coding
+odor_ids = [1; 2; 17; 18; 19; 20;...
+    21; 22; 23; 24;...
+    25; 26; 27; 28;...
+    3];
+color_ids = [black_color; reddish_purple_color; blue_color; sky_blue_color; vermillion_color; orange_color;...
+    blue_color; sky_blue_color; vermillion_color; orange_color;...
+    blue_color; sky_blue_color; vermillion_color; orange_color;...
+    black_color];
+odor_color = table(odor_ids,color_ids,'VariableNames',{'odorID','colorID'});
+
+grayColor = [.7 .7 .7];
+
+
 
 
 %% CODE
@@ -126,24 +153,40 @@ if comparisonType == "between experiments"
                     thisOdorExp2AcqIdx = thisOdorExp2AcqIdx(1:nAcqsToCompare,:);
                 end
 
+                if olfactory_task == "passive_odor_presentations"
+                    % Get the odor color from user input in preProcessing_v2
+                    color = odor_color.colorID(odor_color.odorID==str2double(odorID),:);
+                else
+                    color = grayColor;
+                end
+
                 scatterNicePlot(namePrefix,...
                     strcat("odor ", num2str(odorID)),...
                     expData(expDataNum).name,...
                     dataType,...
                     label,ylimit_min.(dataType),ylimit_max.(dataType),...
                     mean(allOdorDataExp1(thisOdorExp1AcqIdx',:)),...
-                    mean(allOdorDataExp2(thisOdorExp2AcqIdx',:)))
+                    mean(allOdorDataExp2(thisOdorExp2AcqIdx',:)),...
+                    color)
             end
         end
 
         % == BASELINE PLOT ================================================
+        if olfactory_task == "passive_odor_presentations"
+            % Get the odor color from user input in preProcessing_v2
+            color = 'k';
+        else
+            color = grayColor;
+        end
+
         scatterNicePlot(namePrefix,...
                     "baseline",...
                     expData(expDataNum).name,...
                     dataType,...
                     label,ylimit_min.(dataType),ylimit_max.(dataType),...
                     baselineAvgsToCompare(:,1),...
-                    baselineAvgsToCompare(:,2))  
+                    baselineAvgsToCompare(:,2),...
+                    color)  
     end
 
 elseif comparisonType == "between programs"
@@ -184,13 +227,21 @@ elseif comparisonType == "between programs"
             disp("good job, we have the same number of acqs in both expts")
         end
 
+        if olfactory_task == "passive_odor_presentations"
+            % Get the odor color from user input in preProcessing_v2
+            color = 'k';
+        else
+            color = grayColor;
+        end
+
         scatterNicePlot(namePrefix,...
                     "baseline",...
                     expData(1).name,...
                     dataType,...
                     label,ylimit_min.(dataType),ylimit_max.(dataType),...
                     baselinesToCompare(:,1),...
-                    baselinesToCompare(:,2))  
+                    baselinesToCompare(:,2),...
+                    color)  
     
         %== ODOR-EVOKED =======================================================
         % average across frames
@@ -208,13 +259,26 @@ elseif comparisonType == "between programs"
                 thisOdorProg2AcqIdx = thisOdorProg2AcqIdx(1:nAcqsToCompare,:);
             end  
 
+            if olfactory_task == "passive_odor_presentations"
+                % deal with mismatch in odorID type in code written by me
+                % vs Vinicius
+                if isnumeric(odorID)
+                    color = odor_color.colorID(odor_color.odorID==odorID,:);
+                else
+                    color = odor_color.colorID(odor_color.odorID==str2double(odorID),:);
+                end
+            else
+                color = grayColor;
+            end
+
             scatterNicePlot(namePrefix,...
                     strcat("odor ", num2str(odorID)),...
                     expData(1).name,...
                     dataType,...
                     label,ylimit_min.(dataType),ylimit_max.(dataType),...
                     mean(odorAll(thisOdorProg1AcqIdx',:)),...
-                    mean(odorAll(thisOdorProg2AcqIdx',:)))
+                    mean(odorAll(thisOdorProg2AcqIdx',:)),...
+                    color)
         end
     end
 end
@@ -238,10 +302,10 @@ disp('saved all figs')
 close all
 
 
-%% Save workspace
-
-% save workspace variables
-matFileName = strcat(expData(1).name, "_to_", ...
-     expData(end).name,'_sequentialZScore');
-save(fullfile(saveDir,matFileName));     
-disp('saved mat file')
+% %% Save workspace
+% 
+% % save workspace variables
+% matFileName = strcat(expData(1).name, "_to_", ...
+%      expData(end).name,'_sequentialZScore');
+% save(fullfile(saveDir,matFileName));     
+% disp('saved mat file')

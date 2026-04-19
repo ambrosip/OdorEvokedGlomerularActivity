@@ -16,11 +16,11 @@ clear all
 %% USER INPUT
 
 % Save folder
-saveFolder = 'M:\ImagingData\20251002\M174\e1\processed\matlab\2026-04-16';
+saveFolder = "/Volumes/T7 Shield/PA/Poster";
 
 % Odor numbers (order doesn't matter)
-firstOdorId = 1;
-secondOdorId = 2;
+firstOdorId = 19;
+secondOdorId = 20;
 
 % hit, miss, false, or na?
 outcome = "na";
@@ -29,7 +29,8 @@ outcome = "na";
 zScoreMax = 5;
 
 % Path to .mat files (could be more than one)
-pathMatFiles = ["M:\ImagingData\20251002\M174\e1\processed\matlab\2026-04-16\20251002_sid174_e1_to_20251002_sid174_e1_sequentialZScore.mat"];
+% USE DOUBLE QUOTES
+pathMatFiles = ["/Volumes/T7 Shield/PA/Poster/20260316m357/2026-04-16/20260316_m357_e1_00001_to_20260316_m357_e1_00001_sequentialZScore.mat"];
 
 % Program numbers
 programNumbers = [1, 2];
@@ -156,7 +157,7 @@ set(gcf, 'Position', [2000 100 900 700])    % x y width height
 
 %% Save figure
 
-figPath = fullfile(saveFolder, sprintf("%s.svg", figName));
+figPath = fullfile(saveFolder, sprintf("%s.pdf", figName));
 fig.Theme = 'light';
 saveas(fig, figPath);
 close all
