@@ -249,11 +249,11 @@ for program_name = string(fieldnames(s_olfactometer))'
 
             figures(iFigure).(outcome).image_zScore_v1 = ...
                 figures(iFigure).(outcome).image_zScore_v1 * (n - 1) / n + ...
-                dFF / n;
+                zScore_v1 / n;
 
             figures(iFigure).(outcome).image_zScore_v2 = ...
                 figures(iFigure).(outcome).image_zScore_v1 * (n - 1) / n + ...
-                dFF / n;
+                zScore_v2 / n;
         end
 
         % for outcome = ["hit" "miss" "false" "na"]
