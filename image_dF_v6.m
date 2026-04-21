@@ -49,7 +49,7 @@ compareFigTypes = 1;
 
 % if odor presentation is 1s and you choose divideWindowsByFactorOf = 2,
 % you will compare 0.5 s of odor presentation to 0.5 s of baseline
-divideWindowsByFactorOf = 1;
+divideWindowsByFactorOf = 2;
 
 
 %% Extra inputs in case you run this before timeSeriesFromFijiROIs
@@ -203,7 +203,7 @@ for program_name = string(fieldnames(s_olfactometer))'
             % Load frames for the baseline window
             % this will collect the value of each pixel (x y) for all frames (time) during the baseline window into a (x y time) matrix
             baselineFrames = single(read_file( ...
-                filepath, frameBaselineStart, frameOdorDuration)) + 32768;
+                filepath, frameOdorOnset - frameOdorDuration, frameOdorOnset - 1)) + 32768;
             % calculate the average accross time (aka frames) for each pixel into a (x y) matrix
             baselineImageMean = mean(baselineFrames, ndims(baselineFrames)); 
             % calculate the std accross time (aka frames) for each pixel into a (x y) matrix
@@ -214,13 +214,13 @@ for program_name = string(fieldnames(s_olfactometer))'
             % frames (time) during the odor presentation into a (x y time)
             % matrix
             signalFrames = single(read_file( ...
-                filepath, frameOdorOnset, frameOdorDuration)) + 32768;
+                filepath, frameOdorOnset, frameOdorOnset + frameOdorDuration - 1)) + 32768;
             % calculate the average across time for each pixel
             signalImageMean = mean(signalFrames, ndims(signalFrames));
 
             % Load frames for baseline window + odor presentation window
             allFrames = single(read_file( ...
-                filepath, frameBaselineStart, 2*frameOdorDuration)) + 32768;
+                filepath, frameOdorOnset - frameOdorDuration, frameOdorOnset + frameOdorDuration - 1)) + 32768;
             % take the average across time for each pixel
             allFramesMean = mean(allFrames, ndims(allFrames));
             % calculate the std across time for each pixel

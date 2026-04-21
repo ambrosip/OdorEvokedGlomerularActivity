@@ -19,10 +19,10 @@ DEPENDS on:
 %% USER INPUT
 
 % Experiment folder
-expFolder = "/Volumes/MossLab/ImagingData/20260309/m357";
+expFolder = expDir;
 
 % Do you want to save movies as tiff too?
-saveAsTiff = 1;
+saveAsTiff = 0;
 
 % Define the colors
 max_df_color = [103 0 31] / 255;
@@ -248,7 +248,7 @@ for iMovie = 1:nMovies
             [ movies(iMovie).(outcome).FZScore ...
             , movies(iMovie).(outcome).dFF ...
             , movies(iMovie).(outcome).dFFZScoreTime ...
-            , movies(iMovie).(outcome).dFFZScoreAll
+            , movies(iMovie).(outcome).dFFZScoreAll ...
             ] = utils.movingZScoreAll( ...
                 movies(iMovie).(outcome).avgMovie, framesRollingWindow);
         end

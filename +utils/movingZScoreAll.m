@@ -31,7 +31,7 @@ FZScore = (movingMean - baselineMean) ./ baselineStd;
 dFF = (movingMean - baselineMean) ./ baselineMean;
 
 % Compute the z-score of dF/F (with respect to time)
-dFFZScoreTime = (dFF - mean(dFF, 3)) / std(dFF, 0, 3);
+dFFZScoreTime = (dFF - mean(dFF, 3)) ./ std(dFF, 0, 3);
 
 % Compute the z-score of dF/F (with respect to time and space)
 dFFZScoreAll = (dFF - mean(dFF(:))) / std(dFF(:));
