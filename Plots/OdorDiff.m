@@ -25,6 +25,10 @@ secondOdorId = 20;
 % hit, miss, false, or na?
 outcome = "na";
 
+% Type of image to compare
+% Options: "image_dFF", "image_zScore_v1", "image_zScore_v2"
+imageType = "image_zScore_v1";
+
 % Range for the z-scores
 zScoreMax = 5;
 
@@ -93,7 +97,7 @@ for path = pathMatFiles
             @(s) isRightFig(s, firstOdorId, programNumber), figures);
         firstOdorData = figures(find(findFun, 1));
 
-        imshow(firstOdorData.(outcome).image, bidirectionalRange);
+        imshow(firstOdorData.(outcome).(imageType), bidirectionalRange);
 
         clim(ax, bidirectionalRange);
         colormap(ax, divergingGradient);
@@ -112,7 +116,7 @@ for path = pathMatFiles
             @(s) isRightFig(s, secondOdorId, programNumber), figures);
         secondOdorData = figures(find(findFun, 1));
 
-        imshow(secondOdorData.(outcome).image, bidirectionalRange);
+        imshow(secondOdorData.(outcome).(imageType), bidirectionalRange);
 
         clim(ax, bidirectionalRange);
         colormap(ax, divergingGradient);
@@ -128,8 +132,8 @@ for path = pathMatFiles
         % Difference between images
         ax = nexttile;
 
-        imshow( abs(secondOdorData.(outcome).image ...
-                  - firstOdorData.(outcome).image), onlyPositiveRange);
+        imshow( abs(secondOdorData.(outcome).(imageType) ...
+                  - firstOdorData.(outcome).(imageType)), onlyPositiveRange);
 
         clim(ax, onlyPositiveRange);
         colormap(ax, flipud(gray));
