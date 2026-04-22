@@ -16,11 +16,11 @@ clear all
 %% USER INPUT
 
 % Save folder
-saveFolder = "/Volumes/T7 Shield/PA/Poster";
+saveFolder = "M:\ImagingData\20260311\m357\processed\matlab\2026-04-21";
 
 % Odor numbers (order doesn't matter)
-firstOdorId = 19;
-secondOdorId = 20;
+firstOdorId = 17;
+secondOdorId = 18;
 
 % hit, miss, false, or na?
 outcome = "na";
@@ -30,11 +30,11 @@ outcome = "na";
 imageType = "image_zScore_v1";
 
 % Range for the z-scores
-zScoreMax = 5;
+zScoreMax = 1;
 
 % Path to .mat files (could be more than one)
 % USE DOUBLE QUOTES
-pathMatFiles = ["/Volumes/T7 Shield/PA/Poster/20260316m357/2026-04-16/20260316_m357_e1_00001_to_20260316_m357_e1_00001_sequentialZScore.mat"];
+pathMatFiles = ["M:\ImagingData\20260311\m357\processed\matlab\2026-04-21\20260311_m357_e1_00001_00180_mcor_preProcessing.mat"];
 
 % Program numbers
 programNumbers = [1, 2];
@@ -150,7 +150,8 @@ for path = pathMatFiles
     end
 end
 
-figName = strcat(figName, "_", num2str(firstOdorId), '_OdorDiff');
+figName = sprintf("%s_odor_%d_%d_OdorDiff", ...
+                    figName, firstOdorId, secondOdorId);
 fig.Name = figName;
 
 tl.TileSpacing = "tight";

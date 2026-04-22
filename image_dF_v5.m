@@ -28,10 +28,10 @@ order of things
 
 % set expDir to adjust dirs in case you're loading a MAT file
 previousFile = 1;
-expDir = "M:\ImagingData\20260309\m357";
+expDir = "M:\ImagingData\20260311\m316";
 
 % Put NaN for automatic limits
-absoluteLimit = 0.5;
+absoluteLimit = 1;
 
 % Define percentiles
 LOWER_QUANTILE = 0.01;
@@ -49,7 +49,7 @@ compareFigTypes = 1;
 
 % if odor presentation is 1s and you choose divideWindowsByFactorOf = 2,
 % you will compare 0.5 s of odor presentation to 0.5 s of baseline
-divideWindowsByFactorOf = 1;
+% divideWindowsByFactorOf = 1;
 
 
 %% Extra inputs in case you run this before timeSeriesFromFijiROIs
@@ -90,9 +90,9 @@ frameOdorDuration = frameOdorOffset - frameOdorOnset + 1;
 % Baseline starts one window duration before the onset
 frameBaselineStart = frameOdorOnset - frameOdorDuration;
 
-if exist('divideWindowsByFactorOf','var')
-    frameSignalDuration = round(frameOdorDuration / divideWindowsByFactorOf);
-end
+% if exist('divideWindowsByFactorOf','var')
+%     frameSignalDuration = round(frameOdorDuration / divideWindowsByFactorOf);
+% end
 
 
 %% Update dirs
