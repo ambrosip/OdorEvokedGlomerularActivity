@@ -29,7 +29,11 @@ max_df_color = [103 0 31] / 255;
 min_df_color = [5 48 97] / 255;
 
 % Range of z-score to include in movies
-plotRange = [-5, 5];
+
+plotRanges.FZScore = [-5, 5];
+plotRanges.dFF = [-.1, .1];
+plotRanges.dFFZScoreTime = [-5, 5];
+plotRanges.dFFZScoreAll = [-5, 5];
 
 % How many seconds in the rolling window
 secondsRollingWindow = .5;
@@ -297,7 +301,7 @@ for iMovie = 1:nMovies
             fig = figure('Position', [50 50 w h], 'Visible', 'off');
     
             for iFrame = 1:size(movies(iMovie).(outcome).avgMovie, 3)
-                imshow(movie(:, :, iFrame), plotRange, ...
+                imshow(movie(:, :, iFrame), plotRanges.(movieType), ...
                     'InitialMagnification', 'fit');
                 colormap(divergingGradient);
     
@@ -321,53 +325,3 @@ for iMovie = 1:nMovies
 end
 
 fprintf("[INFO] Finished saving!\n")
-
-
-%% Save movies as TIFF
-
-if saveAsTiff == 1
-
-    fprintf("[INFO] Saving %d movies:\n", nMovies);
-        
-    for iMovie = 1:nMovies
-        for outcome = ["hit" "miss" "false" "na"]
-            % Don't create a movie if there is no data
-            if movies(iMovie).(outcome).total == 0
-                continue
-            end
-    
-            tiffName = strcat(firstAcqName(1:22), "_to_", ...
-                lastAcqName(1:22), "_", ...
-                sprintf(...              
-                "zScoreMovie_%s_%s_odor_%d_outcome_%s.tif", ...
-                movies(iMovie).program, ...
-                movies(iMovie).type, ...
-                movies(iMovie).odor, ...
-                outcome));
-            tiffPath = fullfile(saveFolder, tiffName);
-            fprintf("[INFO]   Movie %d -> %s\n", iMovie, tiffName);
-    
-            movie = movies(iMovie).(outcome).avgMovie;
-            t = Tiff(tiffPath, "w");
-    
-            for iFrame = 1:size(movies(iMovie).(outcome).avgMovie, 3)
-                tagstruct.ImageLength = size(movie, 1);
-                tagstruct.ImageWidth = size(movie, 2);
-                tagstruct.Photometric = Tiff.Photometric.MinIsBlack;
-                tagstruct.SampleFormat = Tiff.SampleFormat.IEEEFP;
-                tagstruct.BitsPerSample = 32;
-    
-                t.setTag(tagstruct);
-                t.write(single(movie(:, :, iFrame)));
-    
-                if iFrame < size(movie, 3)
-                    t.writeDirectory();
-                end
-            end
-    
-            t.close();
-        end
-    end
-    
-    fprintf("[INFO] Finished saving!\n")
-end
