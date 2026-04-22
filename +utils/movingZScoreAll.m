@@ -14,15 +14,16 @@ end
 % ASSUMPTIONS: 1) inputMovie has 3 dimensions.
 %              2) Time dimension is the last one.
 
+% inputMovie is F(y,x,t)
 movingMean = movmean(inputMovie, windowSize, 3);
 
 % movmean uses a smaller window when the frame is closer to the start/end
 % The first frame that has a window with full size is the frame below
+% TODO: baselineMean = mean(inputMovie(:, :, 1:baselineDuration), 3);
 baselineMean = movingMean(:, :, ceil((windowSize + 1) / 2));
 baselineStd = std(inputMovie(:, :, 1:windowSize), 0, 3);
 
-% ALERT: 1) movingMean is now dF/F
-%        2) ./ computes the entrywise division (don't use /)
+% ALERT: ./ computes the entrywise division (don't use /)
 
 % Compute the z-score of F
 FZScore = (movingMean - baselineMean) ./ baselineStd;

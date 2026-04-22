@@ -11,7 +11,7 @@ comparing each pixel to its past self
 1) Run pre-processing OR load preProcessing MAT files (in case variables are not in the environment)
 
 order of things
-    1) get F over time - collect frames from key time windows (baseline, 
+    1) get F over time - collect frames from key time windows (baseline,
     odor presentation, or both)
     2) get F over window - calculate avg across frames for key time windows
     (baseline, odor, or both)
@@ -28,10 +28,10 @@ order of things
 
 % set expDir to adjust dirs in case you're loading a MAT file
 previousFile = 1;
-expDir = "M:\ImagingData\20260309\m357";
+expDir = "/Users/vinicius/TempData/20260324/m357/e1";
 
 % Put NaN for automatic limits
-absoluteLimit = 0.5;
+absoluteLimit = 1;
 
 % Define percentiles
 LOWER_QUANTILE = 0.01;
@@ -49,7 +49,14 @@ compareFigTypes = 1;
 
 % if odor presentation is 1s and you choose divideWindowsByFactorOf = 2,
 % you will compare 0.5 s of odor presentation to 0.5 s of baseline
-divideWindowsByFactorOf = 2;
+divideWindowsByFactorOf = 1;
+
+% The frames after the odor onset are subdivided in groups with the same
+% size as a fraction of the baseline (factor given above). The next
+% number picks which of those groups to plot:
+% subdivision = 1 => group next to odor onset
+% subdivision = divideWindowsByFactorOf => group just before odor offset
+subdivision = 1;
 
 
 %% Extra inputs in case you run this before timeSeriesFromFijiROIs
@@ -108,7 +115,7 @@ if previousFile == 1
         getFileDirs
     end
 end
-    
+
 % Open the first frame of the first file to get image dimensions
 filename = imgsToAnalyzeDirs(1).name;
 fileDir = imgsToAnalyzeDirs(1).folder;
@@ -199,33 +206,40 @@ for program_name = string(fieldnames(s_olfactometer))'
             % [-32768, 32767] we need to add 32768 to that matrix to shift its
             % values to the [0, 65535] range.
 
-            % get 
+            % get
             % Load frames for the baseline window
             % this will collect the value of each pixel (x y) for all frames (time) during the baseline window into a (x y time) matrix
             baselineFrames = single(read_file( ...
-                filepath, frameOdorOnset - frameOdorDuration, frameOdorOnset - 1)) + 32768;
+                filepath, ...
+                frameOdorOnset - frameSignalDuration, ...
+                frameSignalDuration)) + 32768;
             % calculate the average accross time (aka frames) for each pixel into a (x y) matrix
-            baselineImageMean = mean(baselineFrames, ndims(baselineFrames)); 
+            baselineImageMean = mean(baselineFrames, ndims(baselineFrames));
             % calculate the std accross time (aka frames) for each pixel into a (x y) matrix
             baselineImageStd = std(baselineFrames, 0, ndims(baselineFrames));
 
-            % Load frames for the signal window 
+            % Load frames for the signal window
             % this will collect the value of each pixel (x y) for all
             % frames (time) during the odor presentation into a (x y time)
             % matrix
             signalFrames = single(read_file( ...
-                filepath, frameOdorOnset, frameOdorOnset + frameOdorDuration - 1)) + 32768;
+                filepath, ...
+                frameOdorOnset + ...
+                    (subdivision - 1) * frameSignalDuration, ...
+                frameSignalDuration)) + 32768;
             % calculate the average across time for each pixel
             signalImageMean = mean(signalFrames, ndims(signalFrames));
 
             % Load frames for baseline window + odor presentation window
             allFrames = single(read_file( ...
-                filepath, frameOdorOnset - frameOdorDuration, frameOdorOnset + frameOdorDuration - 1)) + 32768;
+                filepath, ...
+                frameOdorOnset - frameSignalDuration, ...
+                2 * frameSignalDuration)) + 32768;
             % take the average across time for each pixel
             allFramesMean = mean(allFrames, ndims(allFrames));
             % calculate the std across time for each pixel
             allFramesStd = std(allFrames, 0, ndims(allFrames));
-            
+
             % calculate the dF/F for each pixel using the mean during the
             % baseline window
             dFF = ...
@@ -271,14 +285,14 @@ for program_name = string(fieldnames(s_olfactometer))'
         end
 
         % for outcome = ["hit" "miss" "false" "na"]
-        %     % REMOVE THIS CALCULATION (this code uses average accross pixels) 
+        %     % REMOVE THIS CALCULATION (this code uses average accross pixels)
         %     % figures(iFigure).(outcome).image = ...
         %     %     (figures(iFigure).(outcome).image - ...
         %     %     mean(figures(iFigure).(outcome).image(:))) / ...
         %     %     std(figures(iFigure).(outcome).image(:));
-        % 
+        %
         %     figures(iFigure).(outcome).image_dFF = figures(iFigure).(outcome).image_dFF;
-        %     figures(iFigure).(outcome).image_zScore_v1 = figures(iFigure).(outcome).image_zScore_v1; 
+        %     figures(iFigure).(outcome).image_zScore_v1 = figures(iFigure).(outcome).image_zScore_v1;
         %     figures(iFigure).(outcome).image_zScore_v2 = figures(iFigure).(outcome).image_zScore_v2;
         % end
 
@@ -308,7 +322,7 @@ if isempty(figures)
     error('No figures to plot.')
 end
 
-% set the color scale limits if user did not specify an absolute limit 
+% set the color scale limits if user did not specify an absolute limit
 if isnan(absoluteLimit)
     % Initiliaze limits
     lowerLimit = NaN;
@@ -345,215 +359,65 @@ end
 % The same range will be used for all figures, for easy comparisons.
 plotRange = [-absoluteLimit absoluteLimit];
 
-if plotOnlyHits % ignoring this for now!
-    % % Get figure name
-    % % Get the start of firstAcqName (before the third underline)
-    % figNameStart = split(string(firstAcqName), '_');
-    % figNameStart = join(figNameStart(1:end-1), '_');
-    % 
-    % % Get the number of the last acquisition
-    % figNameEnd = split(string(lastAcqName), '_');
-    % figNameEnd = figNameEnd(end-1);
-    % 
-    % % Join results in the correct format
-    % figName = sprintf("%s_to_%s", figNameStart, figNameEnd);
-    % 
-    % fig = figure('Name', figName);
-    % 
-    % % Get the number of unique programs and odors
-    % programTypes = unique([figures.type], 'stable');
-    % odors = unique([figures.odor]);
-    % 
-    % tl = tiledlayout(length(odors), length(programTypes));
-    % title(tl, figName, 'Interpreter', 'none', 'FontSize', 16);
-    % 
-    % % Add blank images for pairs of program and odor that don't have a
-    % % corresponding figure. This is needed to make sure column and row labels
-    % % appear in the final figure.
-    % for row = 1:length(odors)
-    %     for col = 1:length(programTypes)
-    %         % Check if there is a figure for this program and odor
-    %         rows = [figures.odor] == odors(row);
-    %         cols = strcmp([figures.type], programTypes(col));
-    % 
-    %         if sum(rows & cols) == 0
-    %             % If there is no figure, add a blank image
-    %             nexttile((row - 1) * length(programTypes) + col)
-    %             imshow(blankImage, plotRange);
-    %         end
-    %     end
-    % end
-    % 
-    % % Plot all figures
-    % for iFigure = 1:length(figures)
-    %     % Get the row and column of the current figure
-    %     row = find(odors == figures(iFigure).odor);
-    %     col = find(strcmp(programTypes, figures(iFigure).type));
-    % 
-    %     nexttile((row - 1) * length(programTypes) + col)
-    %     imshow(figures(iFigure).hit.image, plotRange);
-    % end
-    % 
-    % % Create column labels
-    % for column = 1:length(programTypes)
-    %     ax = nexttile(column);
-    %     ax.XAxisLocation = 'top';
-    %     xlabel(programTypes(column), 'FontSize', 12);
-    % end
-    % 
-    % % Create row labels
-    % for row = 1:length(odors)
-    %     ax = nexttile((row - 1) * length(programTypes) + 1);
-    %     ax.YAxisLocation = 'left';
-    %     label = sprintf('Odor %d', odors(row));
-    %     ylabel(label, 'FontSize', 12);
-    % end
-    % 
-    % fig.Position = [200 100 frameSize(2)/2.5 * length(programTypes) frameSize(1)/2.5 * length(odors) + 50];
-    % 
-    % % Uses the colormap created at the start
-    % cb = colorbar;
-    % cb.Layout.Tile = 'south';
-    % 
-    % colormap(divergingGradient);
-    % clim(plotRange);
-    % 
-    % % ylabel(cb, 'dF/F', 'FontSize', 12);
-    % ylabel(cb, 'Z-Score', 'FontSize', 12);
-    % 
-    % tl.TileSpacing = 'tight';
-    % tl.Padding = 'tight';
-    % 
-    % drawnow;
 
-elseif compareFigTypes == 1
-    for iFigure = 1:length(figures)
-        % Get figure name
-        % Get the start of firstAcqName (before the third underline)
-        figNameStart = split(string(firstAcqName), '_');
-        figNameStart = join(figNameStart(1:end-1), '_');
-
-        % Get the number of the last acquisition
-        figNameMiddle = split(string(lastAcqName), '_');
-        figNameMiddle = figNameMiddle(end-1);
-
-        % Reformats program type string from "Fine 1" to "fine_1", for example
-        figNameEnd = join(split(lower(figures(iFigure).type)), '_');
-
-        % Join results in the correct format
-        figNameBase = sprintf("%s_to_%s_program_%d_odor_%d_%s", figNameStart, ...
-            figNameMiddle, figures(iFigure).programNumber, ...
-            figures(iFigure).odor, figNameEnd);
-
-        figName = strcat(figNameBase, "_", "comparison");
-        
-        fig = figure('Name', figName);
-
-        % 3 fig types in a row
-        tl = tiledlayout('horizontal');
-        title(tl, figName, 'Interpreter', 'none');
-        nPlots = 3;
-
-        for figType = ["image_dFF", "image_zScore_v1", "image_zScore_v2"]
-            legendName = split(figType, "_");
-            legendName = legendName(2);
-            nexttile
-            imshow(figures(iFigure).na.(figType), plotRange)
-            title(legendName, 'FontSize', 16)
-        end
-
-        baseSize = 600;
-        fig.Position = [200 100 baseSize * nPlots baseSize + 150];
-
-        % Uses the colormap created at the start
-        cb = colorbar;
-        cb.Layout.Tile = 'south';
-
-        colormap(divergingGradient);
-        clim(plotRange);
-
-        % ylabel(cb, '$dF/F$', 'interpreter', 'latex', 'FontSize', 16);
-        % ylabel(cb, 'dF/F', 'FontSize', 16);
-        ylabel(cb, legendName, 'FontSize', 16);
-
-        tl.TileSpacing = 'compact';
-        tl.Padding = 'compact';
-
-        drawnow;
+for iFigure = 1:length(figures)
+    % Skip figures that have no acquisition
+    if figures(iFigure).acquisitions == 0
+        continue
     end
-else % also ignoring for now
-    % for iFigure = 1:length(figures)
-    %     % Get figure name
-    %     % Get the start of firstAcqName (before the third underline)
-    %     figNameStart = split(string(firstAcqName), '_');
-    %     figNameStart = join(figNameStart(1:end-1), '_');
-    % 
-    %     % Get the number of the last acquisition
-    %     figNameMiddle = split(string(lastAcqName), '_');
-    %     figNameMiddle = figNameMiddle(end-1);
-    % 
-    %     % Reformats program type string from "Fine 1" to "fine_1", for example
-    %     figNameEnd = join(split(lower(figures(iFigure).type)), '_');
-    % 
-    %     % Join results in the correct format
-    %     figNameBase = sprintf("%s_to_%s_program_%d_odor_%d_%s", figNameStart, ...
-    %         figNameMiddle, figures(iFigure).programNumber, ...
-    %         figures(iFigure).odor, figNameEnd);
-    % 
-    %     for figType = ["image_dFF", "image_zScore_v1", "image_zScore_v2"]
-    % 
-    %         figName = strcat(figNameBase, "_", figType);
-    %         legendName = split(figType, "_");
-    %         legendName = legendName(2);
-    % 
-    %         fig = figure('Name', figName);
-    % 
-    %         % 3 possible outcomes in a row (or just 1 if there is NA)
-    %         tl = tiledlayout('horizontal');
-    %         title(tl, figName, 'Interpreter', 'none');
-    % 
-    %         if figures(iFigure).na.total == 0
-    %             nPlots = 3;
-    % 
-    %             nexttile
-    %             imshow(figures(iFigure).hit.(figType), plotRange)
-    %             title('Hits', 'FontSize', 16)
-    % 
-    %             nexttile
-    %             imshow(figures(iFigure).false.(figType), plotRange)
-    %             title('False Choices', 'FontSize', 16)
-    % 
-    %             nexttile
-    %             imshow(figures(iFigure).miss.(figType), plotRange)
-    %             title('Misses', 'FontSize', 16)
-    %         else
-    %             nPlots = 1;
-    % 
-    %             nexttile
-    %             imshow(figures(iFigure).na.(figType), plotRange)
-    %             title('NA', 'FontSize', 16)
-    %         end
-    % 
-    %         baseSize = 600;
-    %         fig.Position = [200 100 baseSize * nPlots baseSize + 150];
-    % 
-    %         % Uses the colormap created at the start
-    %         cb = colorbar;
-    %         cb.Layout.Tile = 'south';
-    % 
-    %         colormap(divergingGradient);
-    %         clim(plotRange);
-    % 
-    %         % ylabel(cb, '$dF/F$', 'interpreter', 'latex', 'FontSize', 16);
-    %         % ylabel(cb, 'dF/F', 'FontSize', 16);
-    %         ylabel(cb, legendName, 'FontSize', 16);
-    % 
-    %         tl.TileSpacing = 'compact';
-    %         tl.Padding = 'compact';
-    % 
-    %         drawnow;
-    %     end
-    % end
+
+    % Get figure name
+    % Get the start of firstAcqName (before the third underline)
+    figNameStart = split(string(firstAcqName), '_');
+    figNameStart = join(figNameStart(1:end-1), '_');
+
+    % Get the number of the last acquisition
+    figNameMiddle = split(string(lastAcqName), '_');
+    figNameMiddle = figNameMiddle(end-1);
+
+    % Reformats program type string from "Fine 1" to "fine_1", for example
+    figNameEnd = join(split(lower(figures(iFigure).type)), '_');
+
+    % Join results in the correct format
+    figNameBase = sprintf("%s_to_%s_program_%d_odor_%d_%s", figNameStart, ...
+        figNameMiddle, figures(iFigure).programNumber, ...
+        figures(iFigure).odor, figNameEnd);
+
+    figName = strcat(figNameBase, "_", "comparison");
+
+    fig = figure('Name', figName);
+
+    % 3 fig types in a row
+    tl = tiledlayout('horizontal');
+    title(tl, figName, 'Interpreter', 'none');
+    nPlots = 3;
+
+    for figType = ["image_dFF", "image_zScore_v1", "image_zScore_v2"]
+        legendName = split(figType, "_");
+        legendName = legendName(2);
+        nexttile
+        imshow(figures(iFigure).na.(figType), plotRange)
+        title(legendName, 'FontSize', 16)
+    end
+
+    baseSize = 600;
+    fig.Position = [200 100 baseSize * nPlots baseSize + 150];
+
+    % Uses the colormap created at the start
+    cb = colorbar;
+    cb.Layout.Tile = 'south';
+
+    colormap(divergingGradient);
+    clim(plotRange);
+
+    % ylabel(cb, '$dF/F$', 'interpreter', 'latex', 'FontSize', 16);
+    % ylabel(cb, 'dF/F', 'FontSize', 16);
+    ylabel(cb, legendName, 'FontSize', 16);
+
+    tl.TileSpacing = 'compact';
+    tl.Padding = 'compact';
+
+    drawnow;
 end
 
 
@@ -579,5 +443,5 @@ close all
 
 % save workspace variables
 matFileName = strcat(imgsToAnalyzeNames{1}(1:end-9),'_',imgsToAnalyzeNames{end}(end-13:end-4),'_preProcessing');
-save(fullfile(saveDir,matFileName));     
+save(fullfile(saveDir,matFileName));
 disp('saved mat file')
