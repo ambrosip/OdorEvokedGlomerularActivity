@@ -30,7 +30,7 @@ DEPENDS on:
 %% USER INPUT
 
 % Experiment folder
-expFolder = "/Volumes/MossLab/ImagingData/20260309/m357";
+expFolder = "C:\Temp\old\sid260\e1";
 
 % Do you want to save movies as tiff too?
 saveAsTiff = 1;
@@ -44,6 +44,18 @@ plotRange = [-5, 5];
 
 % How many seconds in the rolling window
 secondsRollingWindow = .5;
+
+
+%% Extra inputs in case you run this before image_dF
+
+% set default firstFig and lastFig boundaries in case user does NOT want a
+% custom subset
+if plotSubset == 0
+    firstAcq = 1;
+    lastAcq = imgsToAnalyze_numberOf;
+end
+firstAcqName = imgsToAnalyzeDirs(1).name;
+lastAcqName = imgsToAnalyzeDirs(lastAcq).name;
 
 
 %% Creates Diverging Colormap

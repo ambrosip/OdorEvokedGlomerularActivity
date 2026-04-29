@@ -1,10 +1,12 @@
 %% USER INPUT
 
+saveFolder = 'C:\Temp\old\sid260\e1\processed\matlab\2026-04-28';
+
 should_I_plot_dFF = 0;
 visibility = 'off';
 
-plotRoiSubset = 0;
-roiSubset = [1:1];
+plotRoiSubset = 1;
+roiSubset = [1:2];
 
 % if using mcor files from odyn (caiman python)
 convertFrom32bit = true;
@@ -19,8 +21,6 @@ manual_x_limits = 1;
 xmin = -2;
 xmax = 4;
 
-saveFolder = '/Volumes/T7 Shield/PA/Poster/rois';
-
 ymin_cmPerSec = -50;
 ymax_cmPerSec = 150;
 
@@ -28,48 +28,48 @@ filterData = 1;
 smooth_span = 5;
 
 
-%% Organize wheel data into structure s_wheel
-% s_wheel.(programFieldName).(odorFieldName) = [xAxis_sec,cmPerSecondPerOdor];
-
-% clear things
-clear s_wheel
-clear cmPerSecondPerOdor
-clear odorPulsePerOdor
-
-% iterate through programs and odors
-totalOdorPresentations = 0;
-for programNum = 1:size(programFieldNames,1) % ALERT added ,1 
-    programFieldName = programFieldNames(programNum);
-    if s_olfactometer.(programFieldName).type ~= "ignore"
-        totalOdorPresentationsPerProgram = 0;
-        for odorNum = 1:length(s_olfactometer.(programFieldName).odorList)
-            odorID = extractBetween(s_olfactometer.(programFieldName).odorList(odorNum),"I "," -");
-            odorFieldName = s_olfactometer.(programFieldName).odorFieldNames(odorNum);
-            % find all acq idx that match this program and odor
-            % the idx of odor presentation will match the acq idx
-            odorPresentationNum = 0;
-            clear cmPerSecondPerOdor
-            clear odorPulsePerOdor
-            for acqIdx = s_olfactometer.(programFieldName).summary_by_trial.acqIdx(s_olfactometer.(programFieldName).summary_by_trial.odor==str2double(odorID))'
-                % had to put this check to deal with problem file M:\ImagingData\20260316\m357\e1
-                if acqIdx > 0
-                    odorPresentationNum = odorPresentationNum + 1; 
-                    totalOdorPresentationsPerProgram = totalOdorPresentationsPerProgram + 1;
-                    totalOdorPresentations = totalOdorPresentations + 1;
-                    odorOnset_dp = allOdorOnsets_dp(acqIdx);
-                    windowStart_dp = odorOnset_dp - round((baseline_dur_s - photobleaching_window_s) * si);
-                    windowEnd_dp = odorOnset_dp + round((odor_dur_s + baseline_dur_s - photobleaching_window_s) * si);
-                    cmPerSecondPerOdor(:,odorPresentationNum) = cmPerSecond_smooth(windowStart_dp:windowEnd_dp);
-                    odorPulsePerOdor(:,odorPresentationNum) = odorPulse(windowStart_dp:windowEnd_dp);
-                    xAxis_sec = linspace(0 - round(baseline_dur_s - photobleaching_window_s), round(odor_dur_s + baseline_dur_s - photobleaching_window_s), windowEnd_dp-windowStart_dp+1)';
-                end
-            end
-            s_wheel.(programFieldName).(odorFieldName).allAcqs = cmPerSecondPerOdor;
-            s_wheel.(programFieldName).(odorFieldName).mean = mean(cmPerSecondPerOdor,2);
-            s_wheel.xAxis_sec = xAxis_sec;
-        end
-    end
-end
+% %% Organize wheel data into structure s_wheel
+% % s_wheel.(programFieldName).(odorFieldName) = [xAxis_sec,cmPerSecondPerOdor];
+% 
+% % clear things
+% clear s_wheel
+% clear cmPerSecondPerOdor
+% clear odorPulsePerOdor
+% 
+% % iterate through programs and odors
+% totalOdorPresentations = 0;
+% for programNum = 1:size(programFieldNames,1) % ALERT added ,1 
+%     programFieldName = programFieldNames(programNum);
+%     if s_olfactometer.(programFieldName).type ~= "ignore"
+%         totalOdorPresentationsPerProgram = 0;
+%         for odorNum = 1:length(s_olfactometer.(programFieldName).odorList)
+%             odorID = extractBetween(s_olfactometer.(programFieldName).odorList(odorNum),"I "," -");
+%             odorFieldName = s_olfactometer.(programFieldName).odorFieldNames(odorNum);
+%             % find all acq idx that match this program and odor
+%             % the idx of odor presentation will match the acq idx
+%             odorPresentationNum = 0;
+%             clear cmPerSecondPerOdor
+%             clear odorPulsePerOdor
+%             for acqIdx = s_olfactometer.(programFieldName).summary_by_trial.acqIdx(s_olfactometer.(programFieldName).summary_by_trial.odor==str2double(odorID))'
+%                 % had to put this check to deal with problem file M:\ImagingData\20260316\m357\e1
+%                 if acqIdx > 0
+%                     odorPresentationNum = odorPresentationNum + 1; 
+%                     totalOdorPresentationsPerProgram = totalOdorPresentationsPerProgram + 1;
+%                     totalOdorPresentations = totalOdorPresentations + 1;
+%                     odorOnset_dp = allOdorOnsets_dp(acqIdx);
+%                     windowStart_dp = odorOnset_dp - round((baseline_dur_s - photobleaching_window_s) * si);
+%                     windowEnd_dp = odorOnset_dp + round((odor_dur_s + baseline_dur_s - photobleaching_window_s) * si);
+%                     cmPerSecondPerOdor(:,odorPresentationNum) = cmPerSecond_smooth(windowStart_dp:windowEnd_dp);
+%                     odorPulsePerOdor(:,odorPresentationNum) = odorPulse(windowStart_dp:windowEnd_dp);
+%                     xAxis_sec = linspace(0 - round(baseline_dur_s - photobleaching_window_s), round(odor_dur_s + baseline_dur_s - photobleaching_window_s), windowEnd_dp-windowStart_dp+1)';
+%                 end
+%             end
+%             s_wheel.(programFieldName).(odorFieldName).allAcqs = cmPerSecondPerOdor;
+%             s_wheel.(programFieldName).(odorFieldName).mean = mean(cmPerSecondPerOdor,2);
+%             s_wheel.xAxis_sec = xAxis_sec;
+%         end
+%     end
+% end
 
 
 % %% Show ROIS

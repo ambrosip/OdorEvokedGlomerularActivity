@@ -4,13 +4,13 @@ close all
 %% USER INPUT - experiment directory and others - EDIT ME
 
 % experiment dir to be analyzed
-expDir = '/Volumes/MossLab/ImagingData/20260330/m357/e1';
+expDir = "C:\Temp\old\sid260\e1";
 
 % variables made to deal with problem files
 ignoreLastTrial = 0;
 
 % to analyze patchwarp mcor output
-patchwarp = 1;
+patchwarp = 0;
 
 % set img-specific inputs
 photobleaching_window_s = 2; % duration of data in senconds that will be removed from baseline to account for photobleaching

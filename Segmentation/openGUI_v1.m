@@ -8,44 +8,23 @@ GOAL:
 TODO:
     1) Improve the erosion, dilation, and watershed steps
     2) Add a tool to draw ROIs
-    3) Include the whole movie instead of just a frame
-    4) Improve the strip bounds calculation
-    5) Add load state after closing
-    6) Add border exclusion zone
+    3) Add load state after closing
 
 DEPENDS:
-    - image_dF_* until "Iterate over Data" section.
-
+    *_correlation_array.mat file created by Python code
 %}
 
 
-% %% Compute Z-score envelope
-%
-% imageSize = size(figures(1).na.image);
-%
-% minEnvelope = zeros(imageSize);
-% maxEnvelope = zeros(imageSize);
-%
-% for iFigure = 1:length(figures)
-%     minEnvelope = min(minEnvelope, figures(iFigure).na.image);
-%     maxEnvelope = max(maxEnvelope, figures(iFigure).na.image);
-% end
-%
-% zScoreEnvelope = ...
-%         (abs(minEnvelope) >= abs(maxEnvelope)) .* minEnvelope + ...
-%         (abs(minEnvelope) < abs(maxEnvelope)) .* maxEnvelope;
+%% USER INPUT
 
-
-%% Compute Z-score envelope (PA)
-%
-% zScoreEnvelope = figures(4).na.image;
+moviesMatFile = "C:\Temp\old\sid260\e1\processed\matlab\movies\20251007_sid260_e1_correlation_array.mat";
 
 
 %% Compute Z-score envelope
 
-moviesMatFile = "M:\ImagingData\20260309\m357\processed\matlab\movies\20260309_m357_e1_correlation_array.mat";
 zScoreEnvelope = load(moviesMatFile,'correlation_image');
 zScoreEnvelope = zScoreEnvelope.correlation_image;
+
 
 %% Create GUI
 
@@ -320,6 +299,7 @@ redraw(segmentationGUI);
 
 hold(segmentationGUI.UserData.axis, 'off');
 
+
 %% Callbacks
 
 function clickCallback(~, event, fig)
@@ -467,6 +447,7 @@ function ROIButton(src, fig)
 
     redraw(fig);
 end
+
 
 %% Plot update function
 

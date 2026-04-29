@@ -45,8 +45,6 @@ min_df_color = [5 48 97] / 255;
 % for all programs and odors in a single figure?
 plotOnlyHits = false;
 
-compareFigTypes = 1;
-
 % if odor presentation is 1s and you choose divideWindowsByFactorOf = 2,
 % you will compare 0.5 s of odor presentation to 0.5 s of baseline
 divideWindowsByFactorOf = 1;
@@ -206,7 +204,6 @@ for program_name = string(fieldnames(s_olfactometer))'
             % [-32768, 32767] we need to add 32768 to that matrix to shift its
             % values to the [0, 65535] range.
 
-            % get
             % Load frames for the baseline window
             % this will collect the value of each pixel (x y) for all frames (time) during the baseline window into a (x y time) matrix
             baselineFrames = single(read_file( ...
@@ -283,18 +280,6 @@ for program_name = string(fieldnames(s_olfactometer))'
                 figures(iFigure).(outcome).image_zScore_v2 * (n - 1) / n + ...
                 zScore_v2 / n;
         end
-
-        % for outcome = ["hit" "miss" "false" "na"]
-        %     % REMOVE THIS CALCULATION (this code uses average accross pixels)
-        %     % figures(iFigure).(outcome).image = ...
-        %     %     (figures(iFigure).(outcome).image - ...
-        %     %     mean(figures(iFigure).(outcome).image(:))) / ...
-        %     %     std(figures(iFigure).(outcome).image(:));
-        %
-        %     figures(iFigure).(outcome).image_dFF = figures(iFigure).(outcome).image_dFF;
-        %     figures(iFigure).(outcome).image_zScore_v1 = figures(iFigure).(outcome).image_zScore_v1;
-        %     figures(iFigure).(outcome).image_zScore_v2 = figures(iFigure).(outcome).image_zScore_v2;
-        % end
 
         % Don't compute if there are no acquisition files
         % If there were no acquisition files nBaseline is zero

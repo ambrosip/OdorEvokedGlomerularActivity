@@ -1,7 +1,7 @@
 %% USER INPUT
 % REMEMBER TO CLOSE GUI BEFORE ADVANCING PAST SAVE MASK SESSION
 
-expDir = '/Volumes/MossLab/ImagingData/20260311/m357';
+expDir = 'C:\Temp\old\sid260\e1';
 
 useRoisFromOtherExp = 0;
 useRoisFromPython = 0;
@@ -10,7 +10,7 @@ should_I_plot_dFF = 0;
 visibility = 'off';
 
 plotRoiSubset = 1;
-roiSubset = [1:20];
+roiSubset = [1:2];
 
 % if using mcor files from odyn (caiman python)
 convertFrom32bit = true;
