@@ -17,13 +17,28 @@ DEPENDS:
 
 %% USER INPUT
 
-moviesMatFile = "C:\Temp\old\sid260\e1\processed\matlab\movies\20251007_sid260_e1_correlation_array.mat";
+moviesMatFile = 'M:\ImagingData\20260515\PA\m357\processed\matlab\20260515_m357_e1_correlation_array.mat';
 
 
 %% Compute Z-score envelope
 
 zScoreEnvelope = load(moviesMatFile,'correlation_image');
 zScoreEnvelope = zScoreEnvelope.correlation_image;
+
+
+%% Creates Diverging Colormap
+
+% Define the colors
+max_df_color = [103 0 31] / 255;
+min_df_color = [5 48 97] / 255;
+
+% Creates 512 color steps between the two colors (512 is arbitrary)
+% The number just need to be high enough for the gradient to be smooth
+colorpoints = linspace(0.0, 1.0, 512);
+
+% This function is from the following website:
+% https://www.kennethmoreland.com/color-maps/
+divergingGradient = divergingMap(colorpoints, min_df_color, max_df_color);
 
 
 %% Create GUI
