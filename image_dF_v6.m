@@ -27,8 +27,8 @@ order of things
 %% USER INPUT
 
 % set expDir to adjust dirs in case you're loading a MAT file
-previousFile = 1;
-expDir = "/Users/vinicius/TempData/20260324/m357/e1";
+previousFile = 0;
+expDir = "/Volumes/T7 Shield/PA/From Server/20251001/sid237/e1";
 
 % Put NaN for automatic limits
 absoluteLimit = 1;
@@ -44,9 +44,13 @@ min_df_color = [5 48 97] / 255;
 % Plot one figure for each program and odor combination or plot only hits
 % for all programs and odors in a single figure?
 plotOnlyHits = false;
+plotOnlyHits = true;
+
+chosen_outcome = "hit";
 
 % if odor presentation is 1s and you choose divideWindowsByFactorOf = 2,
 % you will compare 0.5 s of odor presentation to 0.5 s of baseline
+divideWindowsByFactorOf = 1;
 divideWindowsByFactorOf = 1;
 
 % The frames after the odor onset are subdivided in groups with the same
@@ -55,6 +59,8 @@ divideWindowsByFactorOf = 1;
 % subdivision = 1 => group next to odor onset
 % subdivision = divideWindowsByFactorOf => group just before odor offset
 subdivision = 1;
+subdivision = 1;
+
 
 
 %% Extra inputs in case you run this before timeSeriesFromFijiROIs
@@ -386,7 +392,7 @@ for iFigure = 1:length(figures)
         legendName = split(figType, "_");
         legendName = legendName(2);
         nexttile
-        imshow(figures(iFigure).na.(figType), plotRange)
+        imshow(figures(iFigure).(chosen_outcome).(figType), plotRange)
         title(legendName, 'FontSize', 16)
     end
 
