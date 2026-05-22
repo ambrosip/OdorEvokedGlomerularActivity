@@ -1,3 +1,10 @@
+%{
+
+LOAD masksFromGUI mat file (I think sequential also works)
+
+%}
+
+
 %% USER INPUT
 
 saveFolder = 'C:\Temp\old\sid260\e1\processed\matlab\2026-04-28';

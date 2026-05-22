@@ -9,7 +9,8 @@ ylimit_max.zScore = 5;
 label.dFF = "dF/F";
 label.zScore = "Z-score";
 
-olfactory_task = "passive_odor_presentations";
+olfactory_task = "paint me gray";
+% olfactory_task = "passive_odor_presentations";
 
 % colorblind-safe colors (source:
 % https://www.nature.com/articles/nmeth.1618)
