@@ -22,7 +22,7 @@ DEPENDS on:
 expFolder = expDir;
 
 % Formats to save
-saveAsMP4 = 1;
+saveAsMP4 = 0;
 saveAsTiff = 1;
 
 % Define the colors
@@ -52,6 +52,18 @@ colorpoints = linspace(0.0, 1.0, 512);
 % This function is from the following website:
 % https://www.kennethmoreland.com/color-maps/
 divergingGradient = divergingMap(colorpoints, min_df_color, max_df_color);
+
+
+%% Extra inputs in case you run this before image_dF
+
+% set default firstFig and lastFig boundaries in case user does NOT want a
+% custom subset
+if plotSubset == 0
+    firstAcq = 1;
+    lastAcq = imgsToAnalyze_numberOf;
+end
+firstAcqName = imgsToAnalyzeDirs(1).name;
+lastAcqName = imgsToAnalyzeDirs(lastAcq).name;
 
 
 %% Compute Timing Info
@@ -340,7 +352,7 @@ if saveAsTiff == 1
     for iMovie = 1:nMovies
         for outcome = ["hit" "miss" "false" "na"]
             % Don't create a movie if there is no data
-            if zScoreMovies(iMovie).(outcome).total == 0
+            if movies(iMovie).(outcome).total == 0
                 continue
             end
     
@@ -356,10 +368,10 @@ if saveAsTiff == 1
             tiffPath = fullfile(saveFolder, tiffName);
             fprintf("[INFO]   TIFF %d -> %s\n", iMovie, tiffName);
     
-            movie = movies(iMovie).(outcome).FZscore;
+            movie = movies(iMovie).(outcome).FZScore;
             t = Tiff(tiffPath, "w");
     
-            for iFrame = 1:size(zScoreMovies(iMovie).(outcome).movie, 3)
+            for iFrame = 1:size(movie, 3)
                 tagstruct.ImageLength = size(movie, 1);
                 tagstruct.ImageWidth = size(movie, 2);
                 tagstruct.Photometric = Tiff.Photometric.MinIsBlack;
