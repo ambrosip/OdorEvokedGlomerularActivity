@@ -21,8 +21,9 @@ DEPENDS on:
 % Experiment folder
 expFolder = expDir;
 
-% Do you want to save movies as tiff too?
-saveAsTiff = 0;
+% Formats to save
+saveAsMP4 = 1;
+saveAsTiff = 1;
 
 % Define the colors
 max_df_color = [103 0 31] / 255;
@@ -261,67 +262,121 @@ end
 
 %% Save movies
 
-fprintf("[INFO] Saving %d movies:\n", nMovies);
+if saveAsMP4
 
-% Make all imshow figures borderless
-iptsetpref('ImshowBorder', 'tight');
-
-for iMovie = 1:nMovies
-    for outcome = ["hit" "miss" "false" "na"]
-        for movieType = ["FZScore", "dFF", "dFFZScoreTime", "dFFZScoreAll"]
-        
-            % Don't create a movie if there is no data
-            if movies(iMovie).(outcome).total == 0
-                continue
-            end
+    fprintf("[INFO] Saving %d movies:\n", nMovies);
     
-            fmt = "%s_to_%s_zScoreMovie_%s_%s_odor_%d_outcome_%s_%s.avi";
-            videoName = sprintf( fmt ...
-                               , firstAcqName(1:22) ...
-                               , lastAcqName(1:22) ...
-                               , movies(iMovie).program ...
-                               , movies(iMovie).type ...
-                               , movies(iMovie).odor ...
-                               , outcome ...
-                               , movieType);
-
-            videoPath = fullfile(saveFolder, videoName);
-            fprintf("[INFO]   Movie %d -> %s\n", iMovie, videoName);
+    % Make all imshow figures borderless
+    iptsetpref('ImshowBorder', 'tight');
     
-            video = VideoWriter(videoPath, "MPEG-4");
-            video.FrameRate = frame_rate_hz;
-            open(video);
-    
-            movie = movies(iMovie).(outcome).(movieType);
-    
-            % Encoding works better if width and height are multiples of 16
-            w = 16 * ceil(size(movie, 1) / 16);
-            h = 16 * ceil(size(movie, 2) / 16);
-    
-            fig = figure('Position', [50 50 w h], 'Visible', 'off');
-    
-            for iFrame = 1:size(movies(iMovie).(outcome).avgMovie, 3)
-                imshow(movie(:, :, iFrame), plotRanges.(movieType), ...
-                    'InitialMagnification', 'fit');
-                colormap(divergingGradient);
-    
-                if iFrame > frameOdorOnsetFromBaseline && ...
-                        iFrame < frameOdorOffsetFromBaseline
-    
-                    % Draw a circle if inside odor presentation window
-                    rectangle('Position', [20 20 10 10], ...
-                              'Curvature', [1, 1], ...
-                              'FaceColor', 'r');
+    for iMovie = 1:nMovies
+        for outcome = ["hit" "miss" "false" "na"]
+            for movieType = ["FZScore", "dFF", "dFFZScoreTime", "dFFZScoreAll"]
+            
+                % Don't create a movie if there is no data
+                if movies(iMovie).(outcome).total == 0
+                    continue
                 end
+        
+                fmt = "%s_to_%s_zScoreMovie_%s_%s_odor_%d_outcome_%s_%s";
+                videoName = sprintf( fmt ...
+                                   , firstAcqName(1:22) ...
+                                   , lastAcqName(1:22) ...
+                                   , movies(iMovie).program ...
+                                   , movies(iMovie).type ...
+                                   , movies(iMovie).odor ...
+                                   , outcome ...
+                                   , movieType);
     
-                frame = getframe(fig);
-                writeVideo(video, frame);
+                videoPath = fullfile(saveFolder, videoName);
+                fprintf("[INFO]   Movie %d -> %s\n", iMovie, videoName);
+        
+                video = VideoWriter(videoPath, "MPEG-4");
+                video.FrameRate = frame_rate_hz;
+                open(video);
+        
+                movie = movies(iMovie).(outcome).(movieType);
+        
+                % Encoding works better if width and height are multiples of 16
+                w = 16 * ceil(size(movie, 1) / 16);
+                h = 16 * ceil(size(movie, 2) / 16);
+        
+                fig = figure('Position', [50 50 w h], 'Visible', 'off');
+        
+                for iFrame = 1:size(movies(iMovie).(outcome).avgMovie, 3)
+                    imshow(movie(:, :, iFrame), plotRanges.(movieType), ...
+                        'InitialMagnification', 'fit');
+                    colormap(divergingGradient);
+        
+                    if iFrame > frameOdorOnsetFromBaseline && ...
+                            iFrame < frameOdorOffsetFromBaseline
+        
+                        % Draw a circle if inside odor presentation window
+                        rectangle('Position', [20 20 10 10], ...
+                                  'Curvature', [1, 1], ...
+                                  'FaceColor', 'r');
+                    end
+        
+                    frame = getframe(fig);
+                    writeVideo(video, frame);
+                end
+        
+                close(fig);
+                close(video);
             end
-    
-            close(fig);
-            close(video);
         end
     end
+
 end
 
 fprintf("[INFO] Finished saving!\n")
+
+%% Save movies as TIFF
+
+if saveAsTiff == 1
+
+    fprintf("[INFO] Saving %d movies:\n", nMovies);
+        
+    for iMovie = 1:nMovies
+        for outcome = ["hit" "miss" "false" "na"]
+            % Don't create a movie if there is no data
+            if zScoreMovies(iMovie).(outcome).total == 0
+                continue
+            end
+    
+            fmt = "%s_to_%s_zScoreMovie_%s_%s_odor_%d_outcome_%s_%s.tif";
+            tiffName = sprintf( fmt ...
+                              , firstAcqName(1:22) ...
+                              , lastAcqName(1:22) ...
+                              , movies(iMovie).program ...
+                              , movies(iMovie).type ...
+                              , movies(iMovie).odor ...
+                              , outcome ...
+                              , 'FZScore');
+            tiffPath = fullfile(saveFolder, tiffName);
+            fprintf("[INFO]   TIFF %d -> %s\n", iMovie, tiffName);
+    
+            movie = movies(iMovie).(outcome).FZscore;
+            t = Tiff(tiffPath, "w");
+    
+            for iFrame = 1:size(zScoreMovies(iMovie).(outcome).movie, 3)
+                tagstruct.ImageLength = size(movie, 1);
+                tagstruct.ImageWidth = size(movie, 2);
+                tagstruct.Photometric = Tiff.Photometric.MinIsBlack;
+                tagstruct.SampleFormat = Tiff.SampleFormat.IEEEFP;
+                tagstruct.BitsPerSample = 32;
+    
+                t.setTag(tagstruct);
+                t.write(single(movie(:, :, iFrame)));
+    
+                if iFrame < size(movie, 3)
+                    t.writeDirectory();
+                end
+            end
+    
+            t.close();
+        end
+    end
+    
+    fprintf("[INFO] Finished saving!\n")
+end
